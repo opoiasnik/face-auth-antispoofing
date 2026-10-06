@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+
+# runtime data – never commit biometric data or models
+backend/data/
+backend/models/*.onnx
+backend/models/SHA256SUMS
+backend/reports/
+data/
+
+# Node
+node_modules/
+dist/
+
+# env / IDE
+.env
+*.local
+.idea/
+.vscode/

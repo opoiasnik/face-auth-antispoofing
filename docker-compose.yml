@@ -1,0 +1,30 @@
+name: face-auth
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      FA_REDIS_URL: redis://redis:6379/0
+      FA_DATABASE_URL: ${FA_DATABASE_URL:-sqlite:////app/data/app.db}
+    volumes:
+      - backend-data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend-data:
