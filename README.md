@@ -90,7 +90,7 @@ nastavených tajomstiev.
 * **Backend** – Render, Docker web služba + PostgreSQL podľa [render.yaml](render.yaml)
   (Dashboard → *New* → *Blueprint* → repozitár). Tajomstvá sa vygenerujú automaticky.
 * **Frontend** – Vercel, *Root Directory* = `frontend`. [frontend/vercel.json](frontend/vercel.json)
-  presmeruje `/api/*` na `https://faceauth-api.onrender.com` – prehliadač tak komunikuje
+  presmeruje `/api/*` na `https://faceauth-api-l22k.onrender.com` – prehliadač tak komunikuje
   iba s jednou doménou (bez CORS, prísna CSP). Ak Render pridelí inú adresu, upravte ju tam.
 
 Bezplatná inštancia Render po 15 min nečinnosti uspí a prvá požiadavka trvá ~1 min;
