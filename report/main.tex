@@ -1,11 +1,3 @@
-% =====================================================================
-%  Biometrická autentifikácia tváre s ochranou proti falšovaniu
-%  Semestrálne zadanie – Biometrické systémy bezpečnosti (TUKE FEI)
-%
-%  Celá správa je v tomto jednom súbore (vrátane zoznamu literatúry).
-%  Overleaf: Menu → Compiler = pdfLaTeX. Nepoužíva biber ani biblatex,
-%  aby kompilácia zostala rýchla aj na bezplatnom pláne.
-% =====================================================================
 \documentclass[12pt,a4paper,oneside]{report}
 
 \usepackage[utf8]{inputenc}
@@ -32,10 +24,7 @@
 
 \graphicspath{{figures/}}
 
-% --- pomocné makrá ----------------------------------------------------
-% Červené poznámky na miesta, ktoré treba doplniť (pred odovzdaním odstrániť).
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO:} #1\textbf{]}}}
-% Vloží graf z backend/reports, ak existuje – inak zobrazí rámik s pokynom.
 \newcommand{\optfigure}[3]{%
   \IfFileExists{figures/#1}{\includegraphics[width=#2]{#1}}{%
     \fbox{\parbox{#2}{\centering\vspace{2cm}\textcolor{red}{Chýba \texttt{figures/#1}}\\[2pt]\small #3\vspace{2cm}}}}}
@@ -56,7 +45,6 @@
 
 \begin{document}
 
-% ===== 00_titlepage =====
 \begin{titlepage}
   \centering
   {\large TECHNICKÁ UNIVERZITA V KOŠICIACH\par}
@@ -85,15 +73,10 @@ hlavné výsledky – EER rozpoznávania, ACER detekcie útokov, úspešnosť en
 \noindent\textbf{Kľúčové slová:} biometria, rozpoznávanie tváre, detekcia prezentačných
 útokov, anti-spoofing, živosť, ISO/IEC~30107-3
 
-
 \tableofcontents
 \listoffigures
 \listoftables
 
-% ===== 01_uvod =====
-% ---------------------------------------------------------------------
-%  ÚVOD – píšu autori sami (bez generatívnej AI).
-% ---------------------------------------------------------------------
 \chapter{Úvod}
 
 Odomknúť telefón pohľadom do kamery je dnes úplne bežné a podobne sa tvárou
@@ -126,13 +109,6 @@ ukazuje, ako sme systém implementovali. V~kapitole~\ref{ch:testovanie} sú výs
 testovania a vyhodnotenia, kapitola~\ref{ch:prirucka} obsahuje príručku k~inštalácii
 a používaniu a na záver zhrnieme dosiahnuté výsledky a možné rozšírenia.
 
-% ===== 02_teoria =====
-% ---------------------------------------------------------------------
-%  TEORETICKÁ ČASŤ – max. 3 strany.
-%  Podľa podmienok predmetu je v tejto časti ZAKÁZANÉ používať text generovaný
-%  umelou inteligenciou (porušenie = 0 bodov). Text preto píšu autori sami.
-%  Nižšie je iba navrhovaná osnova a zoznam overených zdrojov ku každej časti.
-% ---------------------------------------------------------------------
 \chapter{Analýza problematiky}
 \label{ch:teoria}
 
@@ -163,7 +139,6 @@ stručne prehľad noriem. Zdroje: \cite{iso30107-3, busch2023standards}.}
 \todo{Biometrické údaje ako osobitná kategória osobných údajov, ochrana šablón,
 regulácia biometrických systémov v EÚ. Zdroje: \cite{abdullahi2024template, euaiact2024}.}
 
-% ===== 03_navrh =====
 \chapter{Návrh riešenia}
 \label{ch:navrh}
 
@@ -216,11 +191,9 @@ v~pamäti procesu alebo v~Redise.
                   minimum width=26mm, font=\small, fill=white},
       grp/.style={draw, dashed, rounded corners, inner sep=3mm},
       arr/.style={-{Stealth[length=2mm]}, thick}]
-    % klient
     \node[box] (cam) {Webkamera};
     \node[box, below=of cam] (spa) {React SPA\\riadenie výzvy};
     \node[grp, fit=(cam)(spa), label={[font=\small\bfseries]above:Prehliadač}] (client) {};
-    % server
     \node[box, right=22mm of spa] (api) {REST API\\(FastAPI)};
     \node[box, right=of api] (svc) {Služby\\(registrácia,\\overenie)};
     \node[box, above=of svc] (eng) {Biometrický\\engine};
@@ -389,7 +362,6 @@ Ochrana uložených vzorov je navrhnutá s~ohľadom na to, že biometrický úda
 po úniku zmeniť ako heslo \cite{abdullahi2024template}. Systém preto neukladá
 fotografie, vzor šifruje a umožňuje používateľovi kedykoľvek vymazať účet aj vzor.
 
-% ===== 04_implementacia =====
 \chapter{Implementácia}
 \label{ch:implementacia}
 
@@ -558,11 +530,6 @@ s~radami, ako postupovať.
 
 \todo{Sem vložte 2--3 snímky obrazovky (registrácia s~pokynom, úspešné prihlásenie,
 zamietnutý útok fotografiou) do priečinka \texttt{figures/} a odkomentujte obrázok nižšie.}
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[width=0.8\textwidth]{screenshot_enroll.png}
-%   \caption{Registrácia – pokyn aktívnej výzvy}
-% \end{figure}
 
 \section{Nasadenie}
 
@@ -579,7 +546,6 @@ tak komunikuje iba s~jednou doménou.
   \item Repozitár: \url{https://github.com/opoiasnik/face-auth-antispoofing}
 \end{itemize}
 
-% ===== 05_testovanie =====
 \chapter{Testovanie a vyhodnotenie}
 \label{ch:testovanie}
 
@@ -826,7 +792,6 @@ používateľ potrebuje na vykonanie pohybov. Na bezplatnej inštancii služby R
 spracovanie pomalšie a prvá požiadavka po nečinnosti trvá až desiatky sekúnd, kým sa
 inštancia spustí.
 
-% ===== 06_prirucka =====
 \chapter{Príručka a dokumentácia}
 \label{ch:prirucka}
 
@@ -981,10 +946,6 @@ dôvody zamietnutí, zoznam používateľov (blokovanie, odstránenie) a celý a
 Úplný popis vrátane formátu chýb je v~súbore \texttt{docs/api.md} a v~interaktívnej
 dokumentácii \texttt{/docs} (dostupná mimo produkčného režimu).
 
-% ===== 07_zaver =====
-% ---------------------------------------------------------------------
-%  ZÁVER – píšu autori sami po získaní výsledkov.
-% ---------------------------------------------------------------------
 \chapter{Záver}
 
 \todo{Záver (cca 1 strana) napíšte vlastnými slovami. Odporúčaná osnova:}
@@ -999,9 +960,6 @@ dokumentácii \texttt{/docs} (dostupná mimo produkčného režimu).
         \cite{abdullahi2024template}, mobilná aplikácia.
 \end{itemize}
 
-
-% Zoznam literatúry podľa STN ISO 690 (číselný systém, poradie podľa prvej citácie).
-% Všetky záznamy sú overené cez DOI (Crossref) alebo oficiálne stránky vydavateľa.
 \begin{thebibliography}{99}
 \addcontentsline{toc}{chapter}{Zoznam použitej literatúry}
 
@@ -1124,7 +1082,6 @@ Dostupné z: \url{https://github.com/minivision-ai/Silent-Face-Anti-Spoofing}
 \end{thebibliography}
 
 \appendix
-% ===== 08_prilohy =====
 \chapter{Obsah repozitára}
 \label{app:repo}
 
@@ -1164,6 +1121,5 @@ HTTP/1.1 401 Unauthorized
   }
 }
 \end{lstlisting}
-
 
 \end{document}
