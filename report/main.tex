@@ -2,202 +2,16 @@
 %  Biometrická autentifikácia tváre s ochranou proti falšovaniu
 %  Semestrálne zadanie – Biometrické systémy bezpečnosti (TUKE FEI)
 %
-%  Celá správa je v tomto jednom súbore – vrátane bibliografie (prostredie
-%  filecontents nižšie vytvorí references.bib pri kompilácii).
-%  Overleaf: Menu → Compiler = pdfLaTeX, bibliografia sa spracuje cez Biber
-%  (Overleaf to robí automaticky). Ak máte oficiálnu šablónu z MS Teams,
-%  skopírujte do nej obsah súborov z priečinka chapters/ a references.bib.
+%  Celá správa je v tomto jednom súbore (vrátane zoznamu literatúry).
+%  Overleaf: Menu → Compiler = pdfLaTeX. Nepoužíva biber ani biblatex,
+%  aby kompilácia zostala rýchla aj na bezplatnom pláne.
 % =====================================================================
-\begin{filecontents*}[overwrite]{references.bib}
-% Všetky záznamy boli overené cez Crossref (DOI) alebo oficiálne stránky vydavateľa.
-% Zdroje 2022–2026 spĺňajú podmienku "nie staršie ako 5 rokov".
-% zhong2021sface je uvedený navyše, lebo ide o model priamo použitý v implementácii.
-
-@article{wu2023yunet,
-  author  = {Wu, Wei and Peng, Hanyang and Yu, Shiqi},
-  title   = {{YuNet}: A Tiny Millisecond-level Face Detector},
-  journal = {Machine Intelligence Research},
-  year    = {2023},
-  volume  = {20},
-  number  = {5},
-  pages   = {656--665},
-  doi     = {10.1007/s11633-023-1423-y}
-}
-
-@article{deng2022arcface,
-  author  = {Deng, Jiankang and Guo, Jia and Yang, Jing and Xue, Niannan and Kotsia, Irene and Zafeiriou, Stefanos},
-  title   = {{ArcFace}: Additive Angular Margin Loss for Deep Face Recognition},
-  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
-  year    = {2022},
-  volume  = {44},
-  number  = {10},
-  pages   = {5962--5979},
-  doi     = {10.1109/TPAMI.2021.3087709}
-}
-
-@inproceedings{kim2022adaface,
-  author    = {Kim, Minchul and Jain, Anil K. and Liu, Xiaoming},
-  title     = {{AdaFace}: Quality Adaptive Margin for Face Recognition},
-  booktitle = {2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year      = {2022},
-  pages     = {18729--18738},
-  doi       = {10.1109/CVPR52688.2022.01819}
-}
-
-@article{zhong2021sface,
-  author  = {Zhong, Yaoyao and Deng, Weihong and Hu, Jiani and Zhao, Dongyue and Li, Xian and Wen, Dongchao},
-  title   = {{SFace}: Sigmoid-Constrained Hypersphere Loss for Robust Face Recognition},
-  journal = {IEEE Transactions on Image Processing},
-  year    = {2021},
-  volume  = {30},
-  pages   = {2587--2598},
-  doi     = {10.1109/TIP.2020.3048632}
-}
-
-@article{yu2023fassurvey,
-  author  = {Yu, Zitong and Qin, Yunxiao and Li, Xiaobai and Zhao, Chenxu and Lei, Zhen and Zhao, Guoying},
-  title   = {Deep Learning for Face Anti-Spoofing: A Survey},
-  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
-  year    = {2023},
-  volume  = {45},
-  number  = {5},
-  pages   = {5609--5631},
-  doi     = {10.1109/TPAMI.2022.3215850}
-}
-
-@incollection{hernandezortega2023pad,
-  author    = {Hernandez-Ortega, Javier and Fierrez, Julian and Morales, Aythami and Galbally, Javier},
-  title     = {Introduction to Presentation Attack Detection in Face Biometrics and Recent Advances},
-  booktitle = {Handbook of Biometric Anti-Spoofing: Presentation Attack Detection and Vulnerability Assessment},
-  editor    = {Marcel, S{\'e}bastien and Fierrez, Julian and Evans, Nicholas},
-  edition   = {3},
-  publisher = {Springer},
-  address   = {Singapore},
-  year      = {2023},
-  pages     = {203--230},
-  doi       = {10.1007/978-981-19-5288-3_9}
-}
-
-@incollection{busch2023standards,
-  author    = {Busch, Christoph},
-  title     = {Standards for Biometric Presentation Attack Detection},
-  booktitle = {Handbook of Biometric Anti-Spoofing: Presentation Attack Detection and Vulnerability Assessment},
-  editor    = {Marcel, S{\'e}bastien and Fierrez, Julian and Evans, Nicholas},
-  edition   = {3},
-  publisher = {Springer},
-  address   = {Singapore},
-  year      = {2023},
-  pages     = {571--583},
-  doi       = {10.1007/978-981-19-5288-3_21}
-}
-
-@inproceedings{sun2023rethinking,
-  author    = {Sun, Yiyou and Liu, Yaojie and Liu, Xiaoming and Li, Yixuan and Chu, Wen-Sheng},
-  title     = {Rethinking Domain Generalization for Face Anti-spoofing: Separability and Alignment},
-  booktitle = {2023 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year      = {2023},
-  pages     = {24563--24574},
-  doi       = {10.1109/CVPR52729.2023.02353}
-}
-
-@inproceedings{srivatsan2023flip,
-  author    = {Srivatsan, Koushik and Naseer, Muzammal and Nandakumar, Karthik},
-  title     = {{FLIP}: Cross-domain Face Anti-spoofing with Language Guidance},
-  booktitle = {2023 IEEE/CVF International Conference on Computer Vision (ICCV)},
-  year      = {2023},
-  pages     = {19628--19639},
-  doi       = {10.1109/ICCV51070.2023.01803}
-}
-
-@inproceedings{wang2023wildfas,
-  author    = {Wang, Dong and Guo, Jia and Shao, Qiqi and He, Haochi and Chen, Zhian and Xiao, Chuanbao and Liu, Ajian and others},
-  title     = {Wild Face Anti-Spoofing Challenge 2023: Benchmark and Results},
-  booktitle = {2023 IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},
-  year      = {2023},
-  pages     = {6380--6391},
-  doi       = {10.1109/CVPRW59228.2023.00679}
-}
-
-@article{schlett2022fiqa,
-  author  = {Schlett, Torsten and Rathgeb, Christian and Henniger, Olaf and Galbally, Javier and Fierrez, Julian and Busch, Christoph},
-  title   = {Face Image Quality Assessment: A Literature Survey},
-  journal = {ACM Computing Surveys},
-  year    = {2022},
-  volume  = {54},
-  number  = {10s},
-  pages   = {1--49},
-  doi     = {10.1145/3507901}
-}
-
-@article{abdullahi2024template,
-  author  = {Abdullahi, Sani M. and Sun, Shuifa and Wang, Beng and Wei, Ning and Wang, Hongxia},
-  title   = {Biometric Template Attacks and Recent Protection Mechanisms: A Survey},
-  journal = {Information Fusion},
-  year    = {2024},
-  volume  = {103},
-  pages   = {102144},
-  doi     = {10.1016/j.inffus.2023.102144}
-}
-
-@standard{iso30107-3,
-  organization = {{ISO/IEC}},
-  title        = {{ISO/IEC 30107-3:2023} Information technology -- Biometric presentation attack detection -- Part 3: Testing and reporting},
-  edition      = {2},
-  year         = {2023},
-  address      = {Geneva},
-  url          = {https://www.iso.org/standard/79520.html}
-}
-
-@standard{iso29794-5,
-  organization = {{ISO/IEC}},
-  title        = {{ISO/IEC 29794-5:2025} Information technology -- Biometric sample quality -- Part 5: Face image data},
-  edition      = {1},
-  year         = {2025},
-  address      = {Geneva},
-  url          = {https://www.iso.org/standard/81005.html}
-}
-
-@report{enisa2022remote,
-  author      = {{European Union Agency for Cybersecurity (ENISA)}},
-  title       = {Remote Identity Proofing: Attacks \& Countermeasures},
-  type        = {Technical report},
-  institution = {ENISA},
-  address     = {Athens},
-  year        = {2022},
-  url         = {https://www.enisa.europa.eu/publications/remote-identity-proofing-attacks-countermeasures}
-}
-
-@misc{euaiact2024,
-  author       = {{Európsky parlament a Rada Európskej únie}},
-  title        = {Nariadenie (EÚ) 2024/1689 z 13. júna 2024, ktorým sa stanovujú harmonizované pravidlá v oblasti umelej inteligencie (akt o umelej inteligencii)},
-  howpublished = {Úradný vestník Európskej únie, L, 2024/1689},
-  year         = {2024},
-  url          = {https://eur-lex.europa.eu/eli/reg/2024/1689/oj}
-}
-
-% --- softvér (nepočíta sa do 10 odborných zdrojov) --------------------------------
-
-@software{minivision2020silentface,
-  author = {{Minivision AI}},
-  title  = {Silent-Face-Anti-Spoofing},
-  year   = {2020},
-  url    = {https://github.com/minivision-ai/Silent-Face-Anti-Spoofing}
-}
-
-@software{opencvzoo,
-  author = {{OpenCV}},
-  title  = {{OpenCV Zoo}: Models for OpenCV DNN},
-  year   = {2026},
-  url    = {https://github.com/opencv/opencv_zoo}
-}
-\end{filecontents*}
 \documentclass[12pt,a4paper,oneside]{report}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[slovak]{babel}
 \usepackage{lmodern}
-\usepackage{microtype}
 \usepackage[a4paper,left=3cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
 \usepackage{setspace}
 \onehalfspacing
@@ -214,8 +28,6 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,shapes.geometric,calc}
 \usepackage{csquotes}
-\usepackage[backend=biber,style=iso-numeric,sorting=none]{biblatex}
-\addbibresource{references.bib}
 \usepackage[hidelinks]{hyperref}
 
 \graphicspath{{figures/}}
@@ -239,6 +51,8 @@
            {č}{{\v{c}}}1 {ď}{{\v{d}}}1 {ľ}{{\v{l}}}1 {ň}{{\v{n}}}1 {š}{{\v{s}}}1
            {ť}{{\v{t}}}1 {ž}{{\v{z}}}1 {ô}{{\^o}}1 {ä}{{\"a}}1 {→}{{$\rightarrow$}}1
 }
+
+\addto\captionsslovak{\renewcommand{\bibname}{Zoznam použitej literatúry}}
 
 \begin{document}
 
@@ -1167,7 +981,128 @@ dokumentácii \texttt{/docs} (dostupná mimo produkčného režimu).
 \end{itemize}
 
 
-\printbibliography[heading=bibintoc,title={Zoznam použitej literatúry}]
+% Zoznam literatúry podľa STN ISO 690 (číselný systém, poradie podľa prvej citácie).
+% Všetky záznamy sú overené cez DOI (Crossref) alebo oficiálne stránky vydavateľa.
+\begin{thebibliography}{99}
+\addcontentsline{toc}{chapter}{Zoznam použitej literatúry}
+
+\bibitem{enisa2022remote}
+EUROPEAN UNION AGENCY FOR CYBERSECURITY (ENISA).
+\textit{Remote Identity Proofing: Attacks \& Countermeasures}.
+Athens: ENISA, 2022.
+Dostupné z: \url{https://www.enisa.europa.eu/publications/remote-identity-proofing-attacks-countermeasures}
+
+\bibitem{wu2023yunet}
+WU, Wei, PENG, Hanyang a YU, Shiqi.
+YuNet: A Tiny Millisecond-level Face Detector.
+\textit{Machine Intelligence Research}. 2023, roč.~20, č.~5, s.~656--665.
+DOI: 10.1007/s11633-023-1423-y
+
+\bibitem{deng2022arcface}
+DENG, Jiankang, GUO, Jia, YANG, Jing, XUE, Niannan, KOTSIA, Irene a ZAFEIRIOU, Stefanos.
+ArcFace: Additive Angular Margin Loss for Deep Face Recognition.
+\textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}. 2022,
+roč.~44, č.~10, s.~5962--5979.
+DOI: 10.1109/TPAMI.2021.3087709
+
+\bibitem{kim2022adaface}
+KIM, Minchul, JAIN, Anil K. a LIU, Xiaoming.
+AdaFace: Quality Adaptive Margin for Face Recognition.
+In: \textit{2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}.
+IEEE, 2022, s.~18729--18738.
+DOI: 10.1109/CVPR52688.2022.01819
+
+\bibitem{zhong2021sface}
+ZHONG, Yaoyao, DENG, Weihong, HU, Jiani, ZHAO, Dongyue, LI, Xian a WEN, Dongchao.
+SFace: Sigmoid-Constrained Hypersphere Loss for Robust Face Recognition.
+\textit{IEEE Transactions on Image Processing}. 2021, roč.~30, s.~2587--2598.
+DOI: 10.1109/TIP.2020.3048632
+
+\bibitem{iso29794-5}
+ISO/IEC 29794-5:2025.
+\textit{Information technology -- Biometric sample quality -- Part~5: Face image data}.
+1.~vyd. Ženeva: ISO, 2025.
+Dostupné z: \url{https://www.iso.org/standard/81005.html}
+
+\bibitem{schlett2022fiqa}
+SCHLETT, Torsten, RATHGEB, Christian, HENNIGER, Olaf, GALBALLY, Javier,
+FIERREZ, Julian a BUSCH, Christoph.
+Face Image Quality Assessment: A Literature Survey.
+\textit{ACM Computing Surveys}. 2022, roč.~54, č.~10s, s.~1--49.
+DOI: 10.1145/3507901
+
+\bibitem{yu2023fassurvey}
+YU, Zitong, QIN, Yunxiao, LI, Xiaobai, ZHAO, Chenxu, LEI, Zhen a ZHAO, Guoying.
+Deep Learning for Face Anti-Spoofing: A Survey.
+\textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}. 2023,
+roč.~45, č.~5, s.~5609--5631.
+DOI: 10.1109/TPAMI.2022.3215850
+
+\bibitem{hernandezortega2023pad}
+HERNANDEZ-ORTEGA, Javier, FIERREZ, Julian, MORALES, Aythami a GALBALLY, Javier.
+Introduction to Presentation Attack Detection in Face Biometrics and Recent Advances.
+In: MARCEL, Sébastien, FIERREZ, Julian a EVANS, Nicholas (ed.).
+\textit{Handbook of Biometric Anti-Spoofing: Presentation Attack Detection and
+Vulnerability Assessment}. 3.~vyd. Singapore: Springer, 2023, s.~203--230.
+DOI: 10.1007/978-981-19-5288-3\_9
+
+\bibitem{sun2023rethinking}
+SUN, Yiyou, LIU, Yaojie, LIU, Xiaoming, LI, Yixuan a CHU, Wen-Sheng.
+Rethinking Domain Generalization for Face Anti-spoofing: Separability and Alignment.
+In: \textit{2023 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}.
+IEEE, 2023, s.~24563--24574.
+DOI: 10.1109/CVPR52729.2023.02353
+
+\bibitem{srivatsan2023flip}
+SRIVATSAN, Koushik, NASEER, Muzammal a NANDAKUMAR, Karthik.
+FLIP: Cross-domain Face Anti-spoofing with Language Guidance.
+In: \textit{2023 IEEE/CVF International Conference on Computer Vision (ICCV)}.
+IEEE, 2023, s.~19628--19639.
+DOI: 10.1109/ICCV51070.2023.01803
+
+\bibitem{wang2023wildfas}
+WANG, Dong, GUO, Jia, SHAO, Qiqi et al.
+Wild Face Anti-Spoofing Challenge 2023: Benchmark and Results.
+In: \textit{2023 IEEE/CVF Conference on Computer Vision and Pattern Recognition
+Workshops (CVPRW)}. IEEE, 2023, s.~6380--6391.
+DOI: 10.1109/CVPRW59228.2023.00679
+
+\bibitem{iso30107-3}
+ISO/IEC 30107-3:2023.
+\textit{Information technology -- Biometric presentation attack detection --
+Part~3: Testing and reporting}. 2.~vyd. Ženeva: ISO, 2023.
+Dostupné z: \url{https://www.iso.org/standard/79520.html}
+
+\bibitem{busch2023standards}
+BUSCH, Christoph.
+Standards for Biometric Presentation Attack Detection.
+In: MARCEL, Sébastien, FIERREZ, Julian a EVANS, Nicholas (ed.).
+\textit{Handbook of Biometric Anti-Spoofing: Presentation Attack Detection and
+Vulnerability Assessment}. 3.~vyd. Singapore: Springer, 2023, s.~571--583.
+DOI: 10.1007/978-981-19-5288-3\_21
+
+\bibitem{abdullahi2024template}
+ABDULLAHI, Sani M., SUN, Shuifa, WANG, Beng, WEI, Ning a WANG, Hongxia.
+Biometric Template Attacks and Recent Protection Mechanisms: A Survey.
+\textit{Information Fusion}. 2024, roč.~103, čl.~102144.
+DOI: 10.1016/j.inffus.2023.102144
+
+\bibitem{euaiact2024}
+EURÓPSKY PARLAMENT A RADA EURÓPSKEJ ÚNIE.
+Nariadenie (EÚ) 2024/1689 z~13.~júna 2024, ktorým sa stanovujú harmonizované pravidlá
+v~oblasti umelej inteligencie (akt o~umelej inteligencii).
+\textit{Úradný vestník Európskej únie}, L, 2024/1689.
+Dostupné z: \url{https://eur-lex.europa.eu/eli/reg/2024/1689/oj}
+
+\bibitem{opencvzoo}
+OPENCV. \textit{OpenCV Zoo: Models for OpenCV DNN} [softvér].
+Dostupné z: \url{https://github.com/opencv/opencv_zoo}
+
+\bibitem{minivision2020silentface}
+MINIVISION AI. \textit{Silent-Face-Anti-Spoofing} [softvér]. 2020.
+Dostupné z: \url{https://github.com/minivision-ai/Silent-Face-Anti-Spoofing}
+
+\end{thebibliography}
 
 \appendix
 % ===== 08_prilohy =====

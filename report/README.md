@@ -1,18 +1,17 @@
 # Správa (LaTeX)
 
-Technický report semestrálneho zadania. Kompilácia: **pdfLaTeX + Biber**.
+Technický report semestrálneho zadania. Kompilácia: **pdfLaTeX** (bez Biberu – rýchle aj na bezplatnom pláne Overleaf).
 
 ## Overleaf
 
-Celá správa je **v jednom súbore `main.tex`** – vrátane bibliografie
-(prostredie `filecontents*` na začiatku súboru vytvorí `references.bib` pri kompilácii).
+Celá správa je **v jednom súbore `main.tex`** – vrátane zoznamu literatúry
+(prostredie `thebibliography` podľa STN ISO 690 na konci súboru).
 
 1. Overleaf → *New Project* → *Blank Project* → obsah `main.tex` vložte do hlavného súboru.
-2. *Menu* → Compiler: `pdfLaTeX`. Bibliografiu (biblatex, štýl `iso-numeric`)
-   Overleaf spracuje cez Biber automaticky.
+2. *Menu* → Compiler: `pdfLaTeX`.
 3. Grafy nahrajte do priečinka `figures/` v projekte Overleaf (pozri nižšie).
 4. Ak používate oficiálnu šablónu z MS Teams, skopírujte do nej telo dokumentu,
-   balíky, makrá `\todo` a `\optfigure` a prostredie `filecontents*`.
+   balíky, makrá `\todo` a `\optfigure` a prostredie `thebibliography`.
 
 ## Čo treba doplniť
 
@@ -40,6 +39,6 @@ Kým graf chýba, v PDF je namiesto neho červený rámik.
 
 ## Zdroje
 
-Bibliografia (prostredie `filecontents*` v `main.tex`) obsahuje 15 odborných zdrojov z rokov 2022–2025 overených cez DOI
+Zoznam literatúry obsahuje 15 odborných zdrojov z rokov 2022–2025 overených cez DOI
 (Crossref) alebo oficiálne stránky (ISO, ENISA, EUR-Lex), plus model SFace (2021)
 a softvérové zdroje, ktoré sa do limitu 10 zdrojov nezapočítavajú.
