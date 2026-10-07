@@ -158,4 +158,3 @@ docs/               dokumentácia
 | SFace (face_recognition_sface_2021dec) | OpenCV Zoo | Apache-2.0 |
 | MiniFASNetV2, MiniFASNetV1SE | Minivision Silent-Face-Anti-Spoofing, ONNX export yakhyo/face-anti-spoofing | Apache-2.0 |
 
-Kód projektu je pod licenciou MIT.
