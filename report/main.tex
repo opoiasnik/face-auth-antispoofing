@@ -96,17 +96,35 @@ hlavné výsledky – EER rozpoznávania, ACER detekcie útokov, úspešnosť en
 % ---------------------------------------------------------------------
 \chapter{Úvod}
 
-\todo{Úvod (cca 1 strana) napíšte vlastnými slovami. Odporúčaná osnova:}
-\begin{itemize}
-  \item motivácia: prihlasovanie bez hesla, rozšírenie rozpoznávania tváre (mobilné
-        zariadenia, vzdialené overovanie totožnosti) a s tým rastúce riziko podvrhov
-        – vhodné citovať správu ENISA \cite{enisa2022remote};
-  \item problém: samotné porovnanie tváre nestačí, systém musí rozlíšiť živú osobu od
-        fotografie, displeja či videa;
-  \item cieľ práce: navrhnúť, implementovať a vyhodnotiť webový systém autentifikácie
-        tvárou s viacvrstvovou ochranou proti prezentačným útokom;
-  \item štruktúra práce – jedna veta ku každej kapitole.
-\end{itemize}
+Odomknúť telefón pohľadom do kamery je dnes úplne bežné a podobne sa tvárou
+prihlasujeme aj do bankových aplikácií či pri overovaní totožnosti na diaľku. Je to
+pohodlné -- netreba si pamätať heslo a tvár so sebou nosíme stále. Má to však háčik:
+tvár nie je tajomstvo. Fotku človeka nájdeme na sociálnych sieťach za pár sekúnd a ak
+ju systém nedokáže odlíšiť od skutočnej osoby, útočník sa prihlási namiesto nej.
+Správa agentúry ENISA \cite{enisa2022remote} uvádza takéto podvrhy -- fotografie,
+videá prehrávané na displeji či masky -- medzi hlavnými hrozbami vzdialeného overovania
+totožnosti.
+
+Samotné porovnanie dvoch tvárí teda nestačí. Systém musí okrem otázky \enquote{je to
+tá istá osoba?} zodpovedať aj otázku \enquote{je pred kamerou naozaj živý človek?}.
+Práve tejto oblasti, detekcii prezentačných útokov (angl.\ \emph{presentation attack
+detection}, \emph{anti-spoofing}), sme sa v~projekte venovali.
+
+Cieľom práce bolo navrhnúť, naprogramovať a otestovať webový systém, ktorý
+používateľa prihlási iba pomocou tváre z~bežnej webkamery a zároveň sa nedá
+oklamať fotografiou, displejom ani vopred nahraným videom. Nechceli sme sa spoľahnúť
+na jedinú techniku, preto systém kombinuje viac vrstiev ochrany: kontrolu kvality
+snímky, neurónovú sieť na pasívnu detekciu podvrhu, náhodnú výzvu na pohyb hlavy
+a kontrolu, že sa osoba počas snímania nezmenila. Hotový systém je verejne nasadený
+a jeho zdrojový kód je dostupný na GitHube.
+
+Práca je rozdelená nasledovne. Kapitola~\ref{ch:teoria} stručne vysvetľuje, ako
+funguje rozpoznávanie tváre, aké útoky naň existujú a ako sa meria úspešnosť
+biometrických systémov. V~kapitole~\ref{ch:navrh} opisujeme návrh riešenia --
+architektúru, spracovanie snímok a bezpečnostné opatrenia. Kapitola~\ref{ch:implementacia}
+ukazuje, ako sme systém implementovali. V~kapitole~\ref{ch:testovanie} sú výsledky
+testovania a vyhodnotenia, kapitola~\ref{ch:prirucka} obsahuje príručku k~inštalácii
+a používaniu a na záver zhrnieme dosiahnuté výsledky a možné rozšírenia.
 
 % ===== 02_teoria =====
 % ---------------------------------------------------------------------
