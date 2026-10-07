@@ -1,0 +1,153 @@
+\chapter{Príručka a dokumentácia}
+\label{ch:prirucka}
+
+\section{Archivácia a reprodukovateľnosť}
+
+Zdrojový kód, dokumentácia, vyhodnocovacie skripty aj táto správa sú v~repozitári
+\url{https://github.com/opoiasnik/face-auth-antispoofing}. Reprodukovateľnosť
+zabezpečujú:
+\begin{itemize}
+  \item skript na stiahnutie modelov s~kontrolnými súčtami SHA-256,
+  \item databázové migrácie (Alembic) -- schéma sa vytvorí automaticky,
+  \item uzamknuté verzie závislostí klienta (\texttt{package-lock.json}),
+  \item Docker obrazy a súbor \texttt{docker-compose.yml} pre spustenie jedným príkazom,
+  \item automatické testy spúšťané v~GitHub Actions pri každej zmene,
+  \item vyhodnocovacie skripty s~pevne nastaveným náhodným semienkom.
+\end{itemize}
+
+Podrobná technická dokumentácia je v~priečinku \texttt{docs/} repozitára:
+architektúra (\texttt{architecture.md}), popis REST API (\texttt{api.md}),
+používateľská príručka (\texttt{user-guide.md}) a metodika vyhodnotenia
+(\texttt{evaluation.md}).
+
+\section{Inštalácia a spustenie}
+
+\subsection*{Lokálne spustenie}
+Požiadavky: Python 3.11 alebo novší, Node.js 20 alebo novší, webkamera.
+
+\begin{lstlisting}[language=bash, caption={Spustenie servera}]
+cd backend
+python -m venv .venv
+.venv/Scripts/activate        # Linux/macOS: source .venv/bin/activate
+pip install -e ".[dev,eval]"
+python scripts/download_models.py
+uvicorn app.main:create_app --factory --port 8000
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash, caption={Spustenie klienta}]
+cd frontend
+npm ci
+npm run dev                   # http://localhost:5173
+\end{lstlisting}
+
+\subsection*{Spustenie v~Dockeri}
+\begin{lstlisting}[language=bash]
+cp .env.example .env
+docker compose up -d --build  # http://localhost:8080
+\end{lstlisting}
+
+Pri produkčnom nasadení treba nastaviť \texttt{FA\_ENVIRONMENT=production},
+vygenerovať tajomstvá príkazom \texttt{python -m app.cli generate-secrets} a aplikáciu
+sprístupniť cez HTTPS -- prehliadač inak nepovolí prístup ku kamere.
+
+\subsection*{Konfigurácia}
+Prahy a limity sa nastavujú premennými prostredia s~predponou \texttt{FA\_}
+(tab.~\ref{tab:konfiguracia}).
+
+\begin{table}[H]
+  \centering
+  \caption{Najdôležitejšie konfiguračné premenné}
+  \label{tab:konfiguracia}
+  \small
+  \begin{tabularx}{\textwidth}{@{}l c X@{}}
+    \toprule
+    Premenná & Predvolená & Význam \\
+    \midrule
+    \texttt{FA\_MATCHING\_\_THRESHOLD} & 0,40 & prah kosínusovej podobnosti \\
+    \texttt{FA\_PASSIVE\_LIVENESS\_\_THRESHOLD} & 0,70 & prah skóre živosti \\
+    \texttt{FA\_ACTIVE\_LIVENESS\_\_STEPS} & 2 & počet náhodných pohybov vo výzve \\
+    \texttt{FA\_ACTIVE\_LIVENESS\_\_YAW\_THRESHOLD} & 0,20 & minimálne otočenie hlavy \\
+    \texttt{FA\_ACTIVE\_LIVENESS\_\_PITCH\_THRESHOLD} & 0,07 & minimálny pohyb hore/dole \\
+    \texttt{FA\_SECURITY\_\_LOCKOUT\_MAX\_FAILURES} & 5 & neúspechy do zablokovania \\
+    \texttt{FA\_SECURITY\_\_EXPOSE\_SCORES} & true & vracanie skóre (v~produkcii false) \\
+    \texttt{FA\_DATABASE\_URL} & SQLite & pripojenie k~databáze \\
+    \texttt{FA\_REDIS\_URL} & -- & zdieľané výzvy pri viacerých procesoch \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Používateľská príručka}
+
+\subsection*{Registrácia}
+\begin{enumerate}
+  \item Na stránke \emph{Registrácia} zadajte používateľské meno (3--32 znakov: malé
+        písmená, číslice, bodka, pomlčka, podčiarkovník) a voliteľne celé meno.
+  \item Povoľte prístup ku kamere.
+  \item Umiestnite tvár do oválu. Kým sa ovál nezmení na zelený a nezobrazí sa
+        \enquote{Tvár je pripravená}, postupujte podľa nápovedy (priblížte sa, zlepšite
+        osvetlenie).
+  \item Kliknite na \emph{Zaregistrovať tvár} a vykonajte zobrazené pokyny:
+        pozrite priamo do kamery, potom pomaly otočte hlavu doľava alebo doprava,
+        prípadne zdvihnite alebo skloňte hlavu. Poradie je pri každom pokuse iné.
+  \item Po úspešnom overení sa vytvorí účet a používateľ je prihlásený.
+\end{enumerate}
+
+\subsection*{Prihlásenie}
+Režim \emph{Meno + tvár (1:1)} vyžaduje zadanie mena, režim \emph{Iba tvár (1:N)}
+vyhľadá používateľa iba podľa tváre. Postup snímania je rovnaký ako pri registrácii.
+Po piatich neúspešných pokusoch počas 15 minút sa účet dočasne zablokuje.
+
+\subsection*{Riešenie problémov}
+\begin{table}[H]
+  \centering
+  \caption{Časté hlásenia a ich riešenie}
+  \label{tab:hlasenia}
+  \small
+  \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{5.5cm} X@{}}
+    \toprule
+    Hlásenie & Riešenie \\
+    \midrule
+    Prístup ku kamere bol zamietnutý & povoľte kameru v~nastaveniach stránky \\
+    Kamera vyžaduje zabezpečené pripojenie & otvorte aplikáciu cez HTTPS alebo localhost \\
+    Príliš tma / Príliš svetla & otočte sa k~zdroju svetla, nesedte proti oknu \\
+    Pohyby hlavy nezodpovedali výzve & otáčajte hlavou výraznejšie a až po zobrazení pokynu \\
+    Bol zistený pokus o~podvrh & nepoužívajte fotografiu ani displej; pri falošnom poplachu zlepšite osvetlenie \\
+    Overenie zlyhalo -- tvár sa nezhoduje & zlepšite svetlo; pri zmene vzhľadu aktualizujte vzor v~účte \\
+    Príliš veľa pokusov & počkajte 15 minút \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection*{Používateľský účet a administrácia}
+V~účte je história všetkých pokusov o~prihlásenie vrátane neúspešných, možnosť
+aktualizovať vzor tváre (nový vzor sa musí zhodovať s~pôvodným) a natrvalo vymazať
+účet aj vzor. Rolu administrátora prideľuje príkaz
+\texttt{python -m app.cli promote <meno>}. Administrátor vidí štatistiky úspešnosti,
+dôvody zamietnutí, zoznam používateľov (blokovanie, odstránenie) a celý auditný záznam.
+
+\section{Rozhranie REST API}
+
+\begin{table}[H]
+  \centering
+  \caption{Hlavné koncové body API (predpona \texttt{/api/v1})}
+  \label{tab:api}
+  \small
+  \begin{tabularx}{\textwidth}{@{}l l X@{}}
+    \toprule
+    Metóda & Cesta & Popis \\
+    \midrule
+    POST & \texttt{/challenges} & vydanie jednorazovej výzvy \\
+    POST & \texttt{/biometrics/quality} & kontrola kvality jednej snímky \\
+    POST & \texttt{/enrollment} & registrácia, vráti JWT \\
+    POST & \texttt{/auth/verify} & overenie 1:1, vráti JWT \\
+    POST & \texttt{/auth/identify} & identifikácia 1:N, vráti JWT \\
+    GET & \texttt{/users/me/attempts} & história vlastných pokusov \\
+    PUT & \texttt{/users/me/face} & aktualizácia vzoru \\
+    DELETE & \texttt{/users/me} & výmaz účtu a vzoru \\
+    GET & \texttt{/admin/stats}, \texttt{/admin/attempts} & štatistiky a audit (administrátor) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Úplný popis vrátane formátu chýb je v~súbore \texttt{docs/api.md} a v~interaktívnej
+dokumentácii \texttt{/docs} (dostupná mimo produkčného režimu).

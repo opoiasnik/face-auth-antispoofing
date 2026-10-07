@@ -1,0 +1,79 @@
+% =====================================================================
+%  Biometrická autentifikácia tváre s ochranou proti falšovaniu
+%  Semestrálne zadanie – Biometrické systémy bezpečnosti (TUKE FEI)
+%
+%  Overleaf: Menu → Compiler = pdfLaTeX, bibliografia sa spracuje cez Biber
+%  (Overleaf to robí automaticky). Ak máte oficiálnu šablónu z MS Teams,
+%  skopírujte do nej obsah súborov z priečinka chapters/ a references.bib.
+% =====================================================================
+\documentclass[12pt,a4paper,oneside]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[slovak]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper,left=3cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,shapes.geometric,calc}
+\usepackage{csquotes}
+\usepackage[backend=biber,style=iso-numeric,sorting=none]{biblatex}
+\addbibresource{references.bib}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{figures/}}
+
+% --- pomocné makrá ----------------------------------------------------
+% Červené poznámky na miesta, ktoré treba doplniť (pred odovzdaním odstrániť).
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO:} #1\textbf{]}}}
+% Vloží graf z backend/reports, ak existuje – inak zobrazí rámik s pokynom.
+\newcommand{\optfigure}[3]{%
+  \IfFileExists{figures/#1}{\includegraphics[width=#2]{#1}}{%
+    \fbox{\parbox{#2}{\centering\vspace{2cm}\textcolor{red}{Chýba \texttt{figures/#1}}\\[2pt]\small #3\vspace{2cm}}}}}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ý}{{\'y}}1
+           {č}{{\v{c}}}1 {ď}{{\v{d}}}1 {ľ}{{\v{l}}}1 {ň}{{\v{n}}}1 {š}{{\v{s}}}1
+           {ť}{{\v{t}}}1 {ž}{{\v{z}}}1 {ô}{{\^o}}1 {ä}{{\"a}}1 {→}{{$\rightarrow$}}1
+}
+
+\begin{document}
+
+\input{chapters/00_titlepage}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\input{chapters/01_uvod}
+\input{chapters/02_teoria}
+\input{chapters/03_navrh}
+\input{chapters/04_implementacia}
+\input{chapters/05_testovanie}
+\input{chapters/06_prirucka}
+\input{chapters/07_zaver}
+
+\printbibliography[heading=bibintoc,title={Zoznam použitej literatúry}]
+
+\appendix
+\input{chapters/08_prilohy}
+
+\end{document}

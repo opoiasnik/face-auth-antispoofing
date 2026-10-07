@@ -1,0 +1,224 @@
+\chapter{Návrh riešenia}
+\label{ch:navrh}
+
+Cieľom praktickej časti bolo vytvoriť funkčný webový systém, ktorý používateľa
+autentifikuje iba pomocou tváre snímanej bežnou webkamerou a ktorý zároveň odolá
+najčastejším prezentačným útokom -- fotografii, displeju s fotografiou alebo videom
+a pokusu o zámenu osoby počas snímania. Kapitola opisuje požiadavky, architektúru,
+biometrický reťazec a bezpečnostný návrh. Implementačné detaily nasledujú
+v kapitole~\ref{ch:implementacia}.
+
+\section{Požiadavky na systém}
+
+\subsection*{Funkčné požiadavky}
+\begin{enumerate}[label=F\arabic*]
+  \item Registrácia používateľa (\emph{enrolment}) – vytvorenie účtu a biometrického
+        vzoru tváre po úspešnom overení živosti.
+  \item Verifikácia 1:1 – používateľ zadá meno a systém porovná tvár iba s jeho vzorom.
+  \item Identifikácia 1:N – prihlásenie bez mena, vyhľadanie v galérii všetkých vzorov.
+  \item Detekcia prezentačných útokov pri každom snímaní (registrácia aj prihlásenie).
+  \item Navádzanie používateľa počas snímania (poloha tváre, svetlo, pokyny k pohybu).
+  \item Správa účtu – história pokusov, aktualizácia vzoru, výmaz účtu.
+  \item Administrácia – štatistiky, audit pokusov, blokovanie a odstránenie účtov.
+\end{enumerate}
+
+\subsection*{Nefunkčné požiadavky}
+\begin{enumerate}[label=N\arabic*]
+  \item Všetky biometrické rozhodnutia vykonáva server; klient (prehliadač) nie je
+        dôveryhodný, pretože jeho kód môže útočník ľubovoľne upraviť.
+  \item Fotografie sa neukladajú, uchováva sa iba šifrovaný vektor príznakov.
+  \item Spracovanie jednej relácie na bežnom CPU do 1~s (bez GPU).
+  \item Konfigurovateľné prahy rozhodovania bez zásahu do kódu.
+  \item Reprodukovateľnosť – automatizované testy, kontajnerizácia, verejný repozitár.
+\end{enumerate}
+
+\section{Architektúra}
+
+Systém má klient-server architektúru (obr.~\ref{fig:architektura}). Klient je
+jednostránková aplikácia (SPA) v~jazyku TypeScript s~knižnicou React, ktorá ovláda
+webkameru cez rozhranie \texttt{getUserMedia}, zobrazuje pokyny a odosiela snímky na
+server. Server je napísaný v~jazyku Python s~rámcom FastAPI a obsahuje celý
+biometrický reťazec. Trvalé dáta sú v~relačnej databáze (SQLite pri vývoji,
+PostgreSQL v~produkcii), krátkodobý stav (jednorazové výzvy, počítadlá pokusov)
+v~pamäti procesu alebo v~Redise.
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[
+      node distance=6mm and 8mm,
+      box/.style={draw, rounded corners, align=center, minimum height=9mm,
+                  minimum width=26mm, font=\small, fill=white},
+      grp/.style={draw, dashed, rounded corners, inner sep=3mm},
+      arr/.style={-{Stealth[length=2mm]}, thick}]
+    % klient
+    \node[box] (cam) {Webkamera};
+    \node[box, below=of cam] (spa) {React SPA\\riadenie výzvy};
+    \node[grp, fit=(cam)(spa), label={[font=\small\bfseries]above:Prehliadač}] (client) {};
+    % server
+    \node[box, right=22mm of spa] (api) {REST API\\(FastAPI)};
+    \node[box, right=of api] (svc) {Služby\\(registrácia,\\overenie)};
+    \node[box, above=of svc] (eng) {Biometrický\\engine};
+    \node[box, right=of eng] (models) {YuNet, SFace,\\MiniFASNet\\(ONNX)};
+    \node[box, below=of svc] (db) {Databáza\\(vzory, audit)};
+    \node[box, right=of svc] (store) {Výzvy,\\rate-limit};
+    \node[grp, fit=(api)(svc)(eng)(models)(db)(store),
+          label={[font=\small\bfseries]above:Server}] (server) {};
+    \draw[arr] (cam) -- (spa);
+    \draw[arr] (spa) -- node[above, font=\scriptsize]{HTTPS/JSON} (api);
+    \draw[arr] (api) -- (svc);
+    \draw[arr] (svc) -- (eng);
+    \draw[arr] (eng) -- (models);
+    \draw[arr] (svc) -- (db);
+    \draw[arr] (svc) -- (store);
+  \end{tikzpicture}
+  \caption{Architektúra systému}
+  \label{fig:architektura}
+\end{figure}
+
+Serverová časť je rozdelená do vrstiev podľa princípov čistej architektúry
+(tab.~\ref{tab:vrstvy}). Biometrické komponenty sú definované cez rozhrania
+(\emph{protocols}) – detektor, extraktor príznakov a pasívny detektor živosti možno
+vymeniť bez zmeny zvyšku systému a v~testoch ich nahradiť deterministickými náhradami.
+Všetky objekty sa skladajú na jednom mieste (\emph{composition root}).
+
+\begin{table}[H]
+  \centering
+  \caption{Vrstvy serverovej časti}
+  \label{tab:vrstvy}
+  \begin{tabularx}{\textwidth}{@{}l l X@{}}
+    \toprule
+    Vrstva & Balík & Zodpovednosť \\
+    \midrule
+    Prezentačná & \texttt{app/api} & HTTP rozhranie, validácia vstupov, autentifikácia JWT, mapovanie chýb \\
+    Aplikačná & \texttt{app/services} & prípady použitia, transakcie, audit, dočasné zablokovanie účtu \\
+    Doménová & \texttt{app/biometrics} & detekcia, kvalita, živosť, príznaky, rozhodovanie \\
+    Infraštruktúrna & \texttt{app/db}, \texttt{app/core} & databáza, šifrovanie, konfigurácia, Redis \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Biometrický reťazec}
+
+Každá snímka prechádza rovnakým spracovaním (obr.~\ref{fig:retazec}). Najprv detektor
+YuNet \cite{wu2023yunet} nájde tváre a päť orientačných bodov (stredy očí, špička nosa,
+kútiky úst). Ak snímka spĺňa požiadavky na kvalitu, vypočíta sa z~orientačných bodov
+poloha hlavy, dvojica modelov MiniFASNet odhadne pravdepodobnosť živej tváre a model
+SFace \cite{zhong2021sface} vytvorí 128-rozmerný vektor príznakov.
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[
+      node distance=5mm,
+      step/.style={draw, rounded corners, align=center, font=\small,
+                   minimum width=24mm, minimum height=8mm},
+      arr/.style={-{Stealth[length=2mm]}, thick}]
+    \node[step] (in) {Snímka};
+    \node[step, right=of in] (det) {Detekcia\\YuNet};
+    \node[step, right=of det] (q) {Kvalita\\vzorky};
+    \node[step, above right=2mm and 8mm of q] (pose) {Póza hlavy};
+    \node[step, right=8mm of q] (pad) {MiniFASNet\\(živosť)};
+    \node[step, below right=2mm and 8mm of q] (emb) {SFace\\(príznaky)};
+    \draw[arr] (in) -- (det);
+    \draw[arr] (det) -- (q);
+    \draw[arr] (q) -- (pose.west);
+    \draw[arr] (q) -- (pad);
+    \draw[arr] (q) -- (emb.west);
+  \end{tikzpicture}
+  \caption{Spracovanie jednej snímky}
+  \label{fig:retazec}
+\end{figure}
+
+Rozhodnutie sa však nerobí na základe jednej snímky, ale celej \emph{relácie}.
+Relácia je postupnosť snímok zachytených počas jednej náhodnej výzvy. Server ju
+vyhodnotí v~piatich krokoch a pri prvom neúspešnom kroku ju zamietne s~konkrétnym
+dôvodom:
+
+\begin{enumerate}
+  \item \textbf{Kvalita} -- relácia musí obsahovať aspoň jednu použiteľnú frontálnu snímku
+        (dôvod \texttt{quality}).
+  \item \textbf{Pasívna detekcia} -- priemerné skóre živosti použiteľných snímok musí byť
+        aspoň $\tau_{\mathrm{PAD}} = 0{,}70$ a žiadna snímka nesmie klesnúť pod $0{,}30$
+        (dôvod \texttt{passive\_spoof}).
+  \item \textbf{Aktívna výzva} -- v~každom kroku výzvy musí byť zaznamenaný požadovaný
+        pohyb hlavy (dôvod \texttt{active\_challenge\_failed}).
+  \item \textbf{Konzistencia identity} -- každá snímka relácie musí byť podobná vzoru
+        relácie aspoň na $0{,}30$ (dôvod \texttt{identity\_inconsistent}).
+  \item \textbf{Porovnanie} -- vzor relácie sa porovná s~uloženým vzorom (1:1) alebo
+        s~galériou (1:N); zhoda nastane pri kosínusovej podobnosti
+        $s \geq \tau_{\mathrm{match}} = 0{,}40$ (dôvod \texttt{no\_match}).
+\end{enumerate}
+
+Vzor relácie je normalizovaný priemer vektorov príznakov frontálnych snímok:
+\begin{equation}
+  \mathbf{t} = \frac{\sum_{i} \hat{\mathbf{e}}_i}{\left\lVert \sum_{i} \hat{\mathbf{e}}_i \right\rVert},
+  \qquad
+  s(\mathbf{t}, \mathbf{r}) = \mathbf{t}^{\top}\hat{\mathbf{r}},
+\end{equation}
+kde $\hat{\mathbf{e}}_i$ sú L2-normalizované vektory príznakov a $\hat{\mathbf{r}}$ je
+normalizovaný referenčný vzor. Prah $0{,}40$ je mierne prísnejší ako hodnota $0{,}363$,
+ktorú pre model SFace odporúča knižnica OpenCV \cite{opencvzoo}.
+
+\section{Návrh aktívnej výzvy}
+
+Pasívna detekcia sa učí z~dát a jej úspešnosť na nových typoch útokov a nových
+podmienkach (iná kamera, iné osvetlenie) nie je zaručená \cite{sun2023rethinking}.
+Preto ju dopĺňa aktívna výzva typu \emph{challenge--response}. Server pri každom pokuse
+vygeneruje kryptograficky bezpečným generátorom postupnosť
+\[
+  \texttt{center} \rightarrow a_1 \rightarrow a_2,\qquad
+  a_1 \neq a_2 \in \{\texttt{turn\_left}, \texttt{turn\_right}, \texttt{look\_up}, \texttt{look\_down}\},
+\]
+teda 12 možných poradí. Výzva má 192-bitový identifikátor, platí 90~s a po prvom
+použití sa zmaže. Statická fotografia nemôže vykonať pohyb a vopred nahrané video
+nepozná náhodné poradie.
+
+Poloha hlavy sa odhaduje geometricky z~piatich orientačných bodov. Body sa najprv
+otočia tak, aby spojnica očí bola vodorovná (kompenzácia náklonu hlavy). Potom
+\begin{equation}
+  \mathrm{yaw} = \frac{x_{\mathrm{nos}} - x_{\mathrm{oči}}}{d_{\mathrm{oči}}},
+  \qquad
+  \mathrm{pitch} = \frac{y_{\mathrm{nos}} - y_{\mathrm{oči}}}{y_{\mathrm{ústa}} - y_{\mathrm{oči}}},
+\end{equation}
+kde $x_{\mathrm{oči}}, y_{\mathrm{oči}}$ je stred spojnice očí, $d_{\mathrm{oči}}$
+vzdialenosť očí a $y_{\mathrm{ústa}}$ výška stredu úst. Pri otočení hlavy doľava (z
+pohľadu osoby) sa nos posunie doprava v~nezrkadlenom obraze a yaw rastie; pri pohľade
+hore sa nos priblíži k~línii očí a pitch klesá.
+
+Krok \texttt{center} určí osobnú neutrálnu polohu $(\overline{\mathrm{yaw}},
+\overline{\mathrm{pitch}})$ ako medián. Ostatné kroky sa hodnotia ako zmena oproti nej
+-- tým sa odstráni vplyv individuálnej stavby tváre a sklonu kamery. Krok je splnený,
+ak aspoň dve snímky prekročia prah ($0{,}20$ pre yaw, $0{,}07$ pre pitch) v~správnom
+smere a aspoň 80~\% snímok kroku obsahuje použiteľnú tvár.
+
+\section{Bezpečnostný návrh}
+
+Tabuľka~\ref{tab:hrozby} sumarizuje uvažované hrozby a zodpovedajúce protiopatrenia.
+Kategorizácia útokov vychádza z~normy ISO/IEC 30107-3 \cite{iso30107-3} a zo správy
+ENISA o~vzdialenom overovaní totožnosti \cite{enisa2022remote}.
+
+\begin{table}[H]
+  \centering
+  \caption{Model hrozieb a protiopatrenia}
+  \label{tab:hrozby}
+  \small
+  \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.2cm} X@{}}
+    \toprule
+    Hrozba & Protiopatrenie \\
+    \midrule
+    Vytlačená fotografia & MiniFASNet (textúra, okraje papiera); nemožnosť vykonať pohyb \\
+    Fotografia / video na displeji & MiniFASNet (moaré, rám displeja); náhodné poradie pohybov \\
+    Nahrávka s~pohybmi hlavy & náhodná jednorazová výzva s~krátkou platnosťou \\
+    Zámena osoby počas snímania & konzistencia vektorov príznakov všetkých snímok \\
+    Opakované odoslanie požiadavky & výzva sa po použití atomicky zmaže \\
+    Hrubá sila, ladenie podľa skóre & zablokovanie po 5 neúspechoch za 15~min, limit požiadaviek na IP, skóre sa v~produkcii nevracajú \\
+    Zisťovanie existencie účtov & neznámy používateľ dostane rovnakú odpoveď \texttt{no\_match} \\
+    Únik databázy & šifrovanie vzorov (Fernet: AES-128-CBC + HMAC-SHA256), kľúč mimo databázy \\
+    Duplicitná registrácia & vyhľadanie 1:N v~galérii pri registrácii \\
+    Injekcia snímok (virtuálna kamera) & iba čiastočne (PAD, výzva); úplná ochrana vyžaduje atestáciu zariadenia \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Ochrana uložených vzorov je navrhnutá s~ohľadom na to, že biometrický údaj nemožno
+po úniku zmeniť ako heslo \cite{abdullahi2024template}. Systém preto neukladá
+fotografie, vzor šifruje a umožňuje používateľovi kedykoľvek vymazať účet aj vzor.

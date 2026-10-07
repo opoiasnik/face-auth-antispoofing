@@ -1,0 +1,245 @@
+\chapter{Testovanie a vyhodnotenie}
+\label{ch:testovanie}
+
+Systém bol overený na troch úrovniach: (1)~automatické testy softvéru, (2)~meranie
+presnosti jednotlivých biometrických modulov podľa noriem a (3)~end-to-end test celého
+systému s~reálnymi používateľmi a útokmi. Výkon bol meraný samostatne. Všetky
+vyhodnocovacie skripty sú v~priečinku \texttt{backend/evaluation} a výsledky ukladajú
+ako tabuľky (JSON, CSV, Markdown) a grafy (PNG, PDF).
+
+\section{Metriky}
+
+\subsection*{Rozpoznávanie tváre}
+Pri prahu $\tau$ a skóre porovnaní genuine $G$ (rovnaká osoba) a impostor $I$ (rôzne
+osoby):
+\begin{equation}
+  \mathrm{FAR}(\tau) = \frac{|\{s \in I : s \ge \tau\}|}{|I|},
+  \qquad
+  \mathrm{FRR}(\tau) = \frac{|\{s \in G : s < \tau\}|}{|G|}.
+\end{equation}
+Miera rovnakej chyby (EER) je hodnota v~bode $\mathrm{FAR}(\tau) = \mathrm{FRR}(\tau)$;
+počíta sa lineárnou interpoláciou medzi susednými prahmi. Ďalej sa uvádza FRR pri
+pevnom FAR (1~\% a 0,1~\%) a podiel snímok bez detegovanej tváre (FTA).
+
+\subsection*{Detekcia prezentačných útokov}
+Podľa ISO/IEC 30107-3 \cite{iso30107-3, busch2023standards} sa pre každý druh útoku
+(\emph{PAI species}) $k$ počíta
+\begin{equation}
+  \mathrm{APCER}_k = \frac{\text{počet útokov typu } k \text{ prijatých ako živá tvár}}{\text{počet útokov typu } k},
+  \qquad
+  \mathrm{BPCER} = \frac{\text{počet živých tvárí odmietnutých}}{\text{počet živých tvárí}},
+\end{equation}
+pričom celkové $\mathrm{APCER} = \max_k \mathrm{APCER}_k$ (najhorší prípad) a
+$\mathrm{ACER} = (\mathrm{APCER} + \mathrm{BPCER})/2$. Uvádza sa aj BPCER20 a BPCER100,
+teda BPCER pri prahu, pri ktorom $\mathrm{APCER} \le 5~\%$ resp. $1~\%$.
+
+\section{Automatické testy}
+
+Serverová časť má 47 testov (pytest) s~pokrytím kódu 87~\%. Testy nahrádzajú neurónové
+siete deterministickými náhradami: syntetická snímka nesie v~jednom pixeli identitu,
+polohu hlavy a príznak živosti. Vďaka tomu sa celý tok overuje cez skutočné HTTP
+rozhranie bez modelov a bez GPU. Klient má jednotkové testy v~nástroji Vitest. Testy,
+statická analýza (Ruff, mypy, ESLint) a zostavenie Docker obrazov bežia automaticky
+pri každej zmene v~GitHub Actions.
+
+\begin{table}[H]
+  \centering
+  \caption{Pokrytie automatickými testami}
+  \label{tab:testy}
+  \small
+  \begin{tabularx}{\textwidth}{@{}l X@{}}
+    \toprule
+    Oblasť & Overované správanie \\
+    \midrule
+    Póza hlavy & znamienko yaw a pitch, nezávislosť od náklonu hlavy, degenerované body \\
+    Aktívna výzva & správny a nesprávny smer, nedostatočný pohyb, málo snímok s~tvárou, náhodnosť poradia \\
+    Metriky & FAR/FRR, EER (aj analyticky pre dve normálne rozdelenia), APCER/BPCER/ACER \\
+    Bezpečnosť & podpis a platnosť JWT, šifrovanie vzorov, produkčná konfigurácia, rate-limit \\
+    Výzvy & jednorazovosť, expirácia, kontrola účelu \\
+    End-to-end API & registrácia a overenie, impostor, neznámy používateľ, útok fotografiou (pasívny aj aktívny), zámena osoby počas relácie, opakované použitie výzvy, chýbajúci krok, duplicitná tvár, identifikácia 1:N, zablokovanie účtu, výmaz účtu, práva administrátora \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Presnosť rozpoznávania tváre}
+
+\textbf{Postup.} Model SFace bol vyhodnotený na databáze Labeled Faces in the Wild
+podľa protokolu \emph{pairs} (6000 dvojíc: 3000 genuine, 3000 impostor) príkazom
+\texttt{python -m evaluation.evaluate\_recognition --lfw}. Kontrola kvality bola pri
+tomto meraní vypnutá, aby sa meral samotný model rozpoznávania.
+
+\todo{Spustite skript a doplňte hodnoty z~\texttt{backend/reports/recognition-*/table.md};
+grafy \texttt{far\_frr.pdf}, \texttt{det.pdf}, \texttt{score\_distribution.pdf} skopírujte
+do \texttt{report/figures/}.}
+
+\begin{table}[H]
+  \centering
+  \caption{Výsledky rozpoznávania tváre na LFW}
+  \label{tab:lfw}
+  \begin{tabular}{@{}lccc@{}}
+    \toprule
+    Pracovný bod & Prah & FAR [\%] & FRR [\%] \\
+    \midrule
+    EER & \todo{} & \todo{} & \todo{} \\
+    Systémový prah & 0,40 & \todo{} & \todo{} \\
+    FAR $\le$ 1~\% & \todo{} & \todo{} & \todo{} \\
+    FAR $\le$ 0,1~\% & \todo{} & \todo{} & \todo{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{score_distribution.pdf}{\linewidth}{histogram skóre}
+    \caption{Rozdelenie skóre}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{det.pdf}{\linewidth}{DET krivka}
+    \caption{DET krivka}
+  \end{subfigure}
+  \caption{Rozpoznávanie tváre na LFW}
+  \label{fig:lfw}
+\end{figure}
+
+\todo{Interpretácia (vlastnými slovami): ako ďaleko sú rozdelenia genuine a impostor,
+čo znamená systémový prah pre bezpečnosť a pohodlie, porovnanie s~hodnotou EER.}
+
+\section{Presnosť detekcie prezentačných útokov}
+
+\textbf{Dataset.} Pomocou skriptu \texttt{evaluation.capture\_dataset} bol webkamerou
+nahraný vlastný dataset s~nasledujúcimi triedami:
+
+\begin{table}[H]
+  \centering
+  \caption{Dataset pre vyhodnotenie PAD}
+  \label{tab:pad-dataset}
+  \begin{tabularx}{\textwidth}{@{}l X r@{}}
+    \toprule
+    Trieda & Popis & Snímky \\
+    \midrule
+    \texttt{bona\_fide} & živé tváre autorov, rôzne vzdialenosti, svetlo a uhly & \todo{} \\
+    \texttt{attack/print} & fotografia vytlačená na papieri A4 & \todo{} \\
+    \texttt{attack/replay} & fotografia a video na displeji mobilného telefónu & \todo{} \\
+    \texttt{attack/screen} & fotografia na monitore notebooku & \todo{} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\textbf{Postup.} Príkaz \texttt{python -m evaluation.evaluate\_pad --dir data/pad}
+vypočíta skóre živosti každej snímky a z~nich metriky pri systémovom prahu 0,70.
+
+\begin{table}[H]
+  \centering
+  \caption{Výsledky pasívnej detekcie útokov (prah 0,70)}
+  \label{tab:pad}
+  \begin{tabular}{@{}lc@{}}
+    \toprule
+    Metrika & Hodnota [\%] \\
+    \midrule
+    APCER (print) & \todo{} \\
+    APCER (replay) & \todo{} \\
+    APCER (screen) & \todo{} \\
+    APCER (max) & \todo{} \\
+    BPCER & \todo{} \\
+    ACER & \todo{} \\
+    EER & \todo{} \\
+    BPCER20 & \todo{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{pad_score_distribution.pdf}{\linewidth}{skóre živosti podľa triedy}
+    \caption{Rozdelenie skóre živosti}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{pad_det.pdf}{\linewidth}{DET pre každý typ útoku}
+    \caption{DET (APCER vs. BPCER)}
+  \end{subfigure}
+  \caption{Pasívna detekcia prezentačných útokov}
+  \label{fig:pad}
+\end{figure}
+
+\todo{Interpretácia: ktorý typ útoku je najťažší, či je prah 0,70 vhodný, prečo samotná
+pasívna detekcia nestačí (generalizácia na nové podmienky \cite{sun2023rethinking}).}
+
+Už pri overovaní implementácie sa ukázal dôležitý jav: digitálna fotografia odoslaná
+priamo serveru dostala od MiniFASNet skóre živosti 0,999 -- pasívny model ju neodlíšil
+od živej tváre, pretože na nej nie sú stopy tlače ani displeja. Takú reláciu však
+zamietla aktívna výzva (všetky kroky s~nulovým pohybom). Tento prípad ilustruje, prečo
+systém kombinuje pasívnu a aktívnu detekciu.
+
+\section{End-to-end test systému}
+
+Test prebehol na verejnej inštancii aplikácie. Výsledky sa čerpajú z~auditného záznamu
+skriptom \texttt{python -m evaluation.audit\_report}.
+
+\begin{table}[H]
+  \centering
+  \caption{Scenáre end-to-end testu}
+  \label{tab:e2e}
+  \small
+  \begin{tabularx}{\textwidth}{@{}X c l c@{}}
+    \toprule
+    Scenár & Pokusy & Očakávaný výsledok & Úspešnosť [\%] \\
+    \midrule
+    Registrovaný používateľ, 1:1 & \todo{} & prijatie & \todo{} \\
+    Registrovaný používateľ, 1:N & \todo{} & prijatie & \todo{} \\
+    Iná osoba s~menom obete & \todo{} & \texttt{no\_match} & \todo{} \\
+    Vytlačená fotografia obete & \todo{} & zamietnutie & \todo{} \\
+    Fotografia na mobile/monitore & \todo{} & zamietnutie & \todo{} \\
+    Video obete s~pohybmi hlavy & \todo{} & zamietnutie & \todo{} \\
+    Zámena osoby počas snímania & \todo{} & \texttt{identity\_inconsistent} & \todo{} \\
+    Opakované odoslanie požiadavky & \todo{} & \texttt{invalid\_challenge} & \todo{} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \optfigure{rejection_reasons.pdf}{0.7\textwidth}{graf z evaluation.audit\_report}
+  \caption{Dôvody zamietnutia v~end-to-end teste}
+  \label{fig:reasons}
+\end{figure}
+
+\todo{Interpretácia: ktorá vrstva zachytila ktorý útok, koľko falošných zamietnutí
+živých používateľov a prečo (svetlo, nedostatočný pohyb), prípadná úprava prahov.}
+
+\section{Výkon}
+
+Latencia bola meraná skriptom \texttt{evaluation.benchmark} na notebooku (CPU, ONNX
+Runtime bez GPU) na obrázku $512\times512$~px, 30 opakovaní.
+
+\begin{table}[H]
+  \centering
+  \caption{Latencia spracovania jednej snímky}
+  \label{tab:latencia}
+  \begin{tabular}{@{}lrrr@{}}
+    \toprule
+    Fáza & Priemer [ms] & Medián [ms] & P95 [ms] \\
+    \midrule
+    Detekcia (YuNet) & 4,97 & 4,82 & 5,28 \\
+    Kontrola kvality & 0,10 & 0,10 & 0,10 \\
+    Odhad polohy hlavy & 0,01 & 0,01 & 0,01 \\
+    Pasívna živosť (2$\times$ MiniFASNet) & 2,44 & 2,42 & 2,56 \\
+    Extrakcia príznakov (SFace) & 3,53 & 3,50 & 3,72 \\
+    \midrule
+    Celá snímka & 13,26 & 12,63 & 16,10 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Relácia obsahuje 15 snímok (3 kroky po 5 snímkach), jej spracovanie na serveri teda
+trvá približne 0,2~s. Celkovú dobu prihlásenia (približne 7~s) určuje najmä čas, ktorý
+používateľ potrebuje na vykonanie pohybov. Na bezplatnej inštancii služby Render je
+spracovanie pomalšie a prvá požiadavka po nečinnosti trvá až desiatky sekúnd, kým sa
+inštancia spustí.
