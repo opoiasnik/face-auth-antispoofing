@@ -1,10 +1,3 @@
-"""Summarise real-world attempts stored in the audit log (end-to-end system test).
-
-Usage::
-
-    python -m evaluation.audit_report [--since 2026-11-01]
-"""
-
 from __future__ import annotations
 
 import argparse

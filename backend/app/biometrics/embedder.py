@@ -1,5 +1,3 @@
-"""Face embedding extraction (OpenCV SFace) and template matching."""
-
 from __future__ import annotations
 
 import threading
@@ -35,14 +33,10 @@ def mean_template(embeddings: Sequence[np.ndarray]) -> np.ndarray:
 
 
 class FaceEmbedder(Protocol):
-    def embed(self, image: np.ndarray, face: FaceDetection) -> np.ndarray:
-        """Return an L2-normalised embedding of the aligned face."""
-        ...
+    def embed(self, image: np.ndarray, face: FaceDetection) -> np.ndarray: ...
 
 
 class SFaceEmbedder:
-    """MobileFaceNet-style recogniser trained with SFace loss (Zhong et al., 2021)."""
-
     def __init__(self, model_path: Path) -> None:
         if not model_path.is_file():
             raise FileNotFoundError(model_path)
@@ -74,7 +68,6 @@ class TemplateMatcher:
         self.threshold = threshold
 
     def verify(self, probe: np.ndarray, references: Sequence[np.ndarray]) -> MatchResult:
-        """1:1 comparison against all templates of a single identity (best score wins)."""
         if not references:
             return MatchResult(score=-1.0, matched=False)
         score = max(cosine_similarity(probe, ref) for ref in references)
@@ -83,7 +76,6 @@ class TemplateMatcher:
     def identify(
         self, probe: np.ndarray, gallery: Iterable[tuple[K, np.ndarray]]
     ) -> IdentifyResult[K]:
-        """1:N search; returns the best-scoring identity."""
         best_key: K | None = None
         best_score = -1.0
         for key, template in gallery:

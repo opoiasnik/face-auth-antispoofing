@@ -1,5 +1,3 @@
-// Access token kept in memory and mirrored to sessionStorage, so it survives a
-// page reload but disappears when the browser tab is closed.
 const KEY = "faceauth.token";
 
 function read(): string | null {
@@ -21,7 +19,7 @@ export const tokenStorage = {
     try {
       sessionStorage.setItem(KEY, token);
     } catch {
-      /* storage unavailable (private mode) – keep in memory only */
+      return;
     }
   },
   clear(): void {
@@ -29,10 +27,9 @@ export const tokenStorage = {
     try {
       sessionStorage.removeItem(KEY);
     } catch {
-      /* ignore */
+      return;
     }
   },
 };
 
-/** Dispatched by the HTTP layer when the server rejects the stored token. */
 export const UNAUTHORIZED_EVENT = "faceauth:unauthorized";

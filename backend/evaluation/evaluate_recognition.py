@@ -1,16 +1,3 @@
-"""Verification accuracy of the face recogniser (genuine vs. impostor comparisons).
-
-Data sources:
-  --lfw          Labeled Faces in the Wild, official 10-fold "pairs" protocol
-                 (downloaded automatically via scikit-learn, ~230 MB)
-  --dir PATH     own dataset: PATH/<identity>/<image>.jpg
-
-Usage::
-
-    python -m evaluation.evaluate_recognition --lfw
-    python -m evaluation.evaluate_recognition --dir data/faces --max-impostors 20000
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -41,7 +28,6 @@ Pair = tuple[np.ndarray, np.ndarray, bool]
 
 
 def embed(engine: BiometricEngine, image: np.ndarray) -> np.ndarray | None:
-    """Embedding of the largest face; no quality gate (we measure the recogniser itself)."""
     faces = engine.detector.detect(image)
     if not faces:
         return None
@@ -59,7 +45,7 @@ def lfw_pairs() -> Iterator[Pair]:
 def _to_bgr(image: np.ndarray) -> np.ndarray:
     scale = 255.0 if image.max() <= 1.0 else 1.0
     rgb = np.clip(image * scale, 0, 255).astype(np.uint8)
-    padded = cv2.copyMakeBorder(rgb, 40, 40, 40, 40, cv2.BORDER_REPLICATE)  # context for detector
+    padded = cv2.copyMakeBorder(rgb, 40, 40, 40, 40, cv2.BORDER_REPLICATE)
     return cv2.cvtColor(padded, cv2.COLOR_RGB2BGR)
 
 

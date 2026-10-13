@@ -1,5 +1,3 @@
-"""Access tokens (JWT) and encryption of biometric templates at rest."""
-
 from __future__ import annotations
 
 import uuid
@@ -67,8 +65,6 @@ class TokenService:
 
 
 class TemplateCipher:
-    """Symmetric authenticated encryption (Fernet: AES-128-CBC + HMAC-SHA256) of embeddings."""
-
     def __init__(self, key: bytes) -> None:
         self._fernet = Fernet(key)
 

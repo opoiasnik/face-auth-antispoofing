@@ -2,10 +2,6 @@ import { CAPTURE_JPEG_QUALITY, CAPTURE_MAX_WIDTH } from "@/config";
 
 let canvas: HTMLCanvasElement | null = null;
 
-/**
- * Grab the current video frame as a base64 JPEG (without the data-URL prefix).
- * The frame is NOT mirrored – the server expects the raw camera image.
- */
 export function captureFrame(
   video: HTMLVideoElement,
   maxWidth = CAPTURE_MAX_WIDTH,

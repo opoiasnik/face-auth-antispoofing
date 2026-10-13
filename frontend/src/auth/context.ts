@@ -4,7 +4,6 @@ import type { AuthResponse, User } from "@/api/types";
 
 export interface AuthState {
   user: User | null;
-  /** True while the stored session is being restored on page load. */
   initializing: boolean;
   signIn: (response: AuthResponse) => void;
   signOut: () => void;

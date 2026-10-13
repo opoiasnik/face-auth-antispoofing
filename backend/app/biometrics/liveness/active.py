@@ -1,12 +1,3 @@
-"""Active liveness: verification of a randomised head-movement challenge.
-
-The challenge always starts with a ``center`` step that establishes the
-subject's personal neutral pose. Every following step must show a movement in
-the requested direction relative to that baseline. Because the order of the
-actions is random and the challenge is single-use, a pre-recorded video or a
-static photo cannot satisfy it.
-"""
-
 from __future__ import annotations
 
 import secrets
@@ -33,7 +24,6 @@ class ActiveLivenessConfig:
 
 
 def generate_actions(pool: Sequence[ChallengeAction], steps: int) -> list[ChallengeAction]:
-    """Random (CSPRNG) sequence: ``center`` followed by ``steps`` distinct actions."""
     candidates = list(dict.fromkeys(pool))
     if steps > len(candidates):
         raise ValueError("Not enough distinct actions for the requested number of steps")
@@ -42,7 +32,6 @@ def generate_actions(pool: Sequence[ChallengeAction], steps: int) -> list[Challe
 
 
 def _movement(action: ChallengeAction, pose: HeadPose, baseline: HeadPose) -> float:
-    """Signed movement towards the requested direction (positive = correct direction)."""
     match action:
         case ChallengeAction.TURN_LEFT:
             return pose.yaw - baseline.yaw
@@ -71,11 +60,6 @@ class ActiveLivenessVerifier:
         poses_per_step: Sequence[Sequence[HeadPose]],
         frames_per_step: Sequence[int],
     ) -> ActiveLivenessResult:
-        """Evaluate each step.
-
-        ``poses_per_step[i]`` holds poses of usable frames of step ``i`` and
-        ``frames_per_step[i]`` the number of frames submitted for that step.
-        """
         if not actions or actions[0] is not ChallengeAction.CENTER:
             raise ValueError("Challenge must start with the center step")
         cfg = self._config

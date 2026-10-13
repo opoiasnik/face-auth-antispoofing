@@ -1,5 +1,3 @@
-"""Builds a :class:`BiometricEngine` from application settings."""
-
 from __future__ import annotations
 
 from app.biometrics.detector import FaceDetector, YuNetDetector
@@ -70,7 +68,6 @@ def build_engine(
     embedder: FaceEmbedder | None = None,
     passive_liveness: PassiveLivenessDetector | None = None,
 ) -> BiometricEngine:
-    """Create the engine; individual components may be injected (tests, experiments)."""
     return BiometricEngine(
         detector=detector or build_detector(settings),
         embedder=embedder or build_embedder(settings),

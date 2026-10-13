@@ -24,7 +24,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (tokenStorage.get()) setUser(await accountApi.me());
   }, []);
 
-  // restore the session after a page reload
   useEffect(() => {
     if (!tokenStorage.get()) return;
     accountApi

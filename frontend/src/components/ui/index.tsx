@@ -1,49 +1,23 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 import { useId } from "react";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost";
+type Variant = "primary" | "secondary" | "danger" | "link";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
-  loading?: boolean;
+  block?: boolean;
 }
 
-export function Button({ variant = "primary", loading = false, children, disabled, className, ...rest }: ButtonProps) {
+export function Button({ variant = "primary", block = false, className, type = "button", ...rest }: ButtonProps) {
+  const classes = ["btn", `btn--${variant}`, block && "btn--block", className].filter(Boolean).join(" ");
+  return <button type={type} className={classes} {...rest} />;
+}
+
+export function Notice({ tone = "info", children }: { tone?: "info" | "success" | "error"; children: ReactNode }) {
   return (
-    <button
-      className={["btn", `btn--${variant}`, className].filter(Boolean).join(" ")}
-      disabled={disabled || loading}
-      aria-busy={loading}
-      {...rest}
-    >
-      {loading && <span className="spinner spinner--inline" aria-hidden />}
+    <p className={`notice notice--${tone}`} role={tone === "error" ? "alert" : "status"}>
       {children}
-    </button>
-  );
-}
-
-type Tone = "info" | "success" | "error" | "warning";
-
-export function Alert({ tone = "info", title, children }: { tone?: Tone; title?: string; children?: ReactNode }) {
-  return (
-    <div className={`alert alert--${tone}`} role={tone === "error" ? "alert" : "status"}>
-      {title && <strong className="alert__title">{title}</strong>}
-      {children && <div>{children}</div>}
-    </div>
-  );
-}
-
-export function Card({ title, actions, children }: { title?: string; actions?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="card">
-      {(title || actions) && (
-        <header className="card__header">
-          {title && <h2>{title}</h2>}
-          {actions}
-        </header>
-      )}
-      {children}
-    </section>
+    </p>
   );
 }
 
@@ -55,15 +29,11 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
 export function Field({ label, hint, ...input }: FieldProps) {
   const id = useId();
   return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <input id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...input} />
-      {hint && (
-        <small id={`${id}-hint`} className="field__hint">
-          {hint}
-        </small>
-      )}
-    </div>
+    <label className="field" htmlFor={id}>
+      <span className="field__label">{label}</span>
+      <input id={id} {...input} />
+      {hint && <span className="field__hint">{hint}</span>}
+    </label>
   );
 }
 
@@ -76,6 +46,14 @@ export function Spinner({ label }: { label?: string }) {
   );
 }
 
-export function Badge({ tone, children }: { tone: "success" | "error" | "neutral"; children: ReactNode }) {
-  return <span className={`badge badge--${tone}`}>{children}</span>;
+export function Section({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="section">
+      <div className="section__head">
+        <h2>{title}</h2>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
 }

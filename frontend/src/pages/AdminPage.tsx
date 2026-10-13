@@ -5,7 +5,7 @@ import type { Stats, User } from "@/api/types";
 import { useAuth } from "@/auth/context";
 import { describeError } from "@/biometrics/messages";
 import { AttemptsTable } from "@/components/AttemptsTable";
-import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
+import { Button, Notice, Section, Spinner } from "@/components/ui";
 import { formatDate, MODE_LABELS, REASON_LABELS } from "@/lib/format";
 import { useAsync } from "@/lib/useAsync";
 
@@ -47,95 +47,102 @@ export function AdminPage() {
   };
 
   if (loading && !data) return <Spinner label="Načítavam…" />;
-  if (error) return <Alert tone="error">{describeError(error)}</Alert>;
+  if (error) return <Notice tone="error">{describeError(error)}</Notice>;
   if (!data || !summary) return null;
   const [stats, users, attempts] = data;
 
   return (
-    <div className="stack">
-      {actionError !== null && <Alert tone="error">{describeError(actionError)}</Alert>}
-      <div className="tiles">
-        <div className="tile">
-          <span className="tile__value">{stats.users}</span>
-          <span className="tile__label">používateľov</span>
+    <div className="page">
+      <header className="page__head">
+        <h1>Správa</h1>
+      </header>
+      {actionError !== null && <Notice tone="error">{describeError(actionError)}</Notice>}
+
+      <dl className="stats">
+        <div>
+          <dt>Používatelia</dt>
+          <dd>{stats.users}</dd>
         </div>
         {summary.byMode.map(([mode, { total, success }]) => (
-          <div className="tile" key={mode}>
-            <span className="tile__value">{total ? Math.round((success / total) * 100) : 0} %</span>
-            <span className="tile__label">
-              {MODE_LABELS[mode] ?? mode} · {success}/{total}
-            </span>
+          <div key={mode}>
+            <dt>{MODE_LABELS[mode] ?? mode}</dt>
+            <dd>
+              {total ? Math.round((success / total) * 100) : 0} %{" "}
+              <small>
+                {success}/{total}
+              </small>
+            </dd>
           </div>
         ))}
-      </div>
+      </dl>
 
-      <div className="grid-2">
-        <Card title="Používatelia">
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Meno</th>
-                  <th>Registrovaný</th>
-                  <th>Stav</th>
-                  <th />
+      <Section title="Používatelia">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Meno</th>
+                <th>Od</th>
+                <th>Stav</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td>
+                    {u.username}
+                    {u.is_admin && <span className="muted"> · admin</span>}
+                  </td>
+                  <td>{formatDate(u.created_at)}</td>
+                  <td>{u.is_active ? "aktívny" : <span className="result--fail">blokovaný</span>}</td>
+                  <td className="row-actions">
+                    {u.id !== me?.id && (
+                      <>
+                        <Button variant="link" onClick={() => void act(() => adminApi.setActive(u.id, !u.is_active))}>
+                          {u.is_active ? "Blokovať" : "Odblokovať"}
+                        </Button>
+                        <Button variant="link" className="link--danger" onClick={() => remove(u)}>
+                          Zmazať
+                        </Button>
+                      </>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td>
-                      {u.username} {u.is_admin && <Badge tone="neutral">admin</Badge>}
-                    </td>
-                    <td>{formatDate(u.created_at)}</td>
-                    <td>{u.is_active ? <Badge tone="success">aktívny</Badge> : <Badge tone="error">blokovaný</Badge>}</td>
-                    <td className="row-actions">
-                      {u.id !== me?.id && (
-                        <>
-                          <Button variant="ghost" onClick={() => void act(() => adminApi.setActive(u.id, !u.is_active))}>
-                            {u.is_active ? "Blokovať" : "Odblokovať"}
-                          </Button>
-                          <Button variant="ghost" onClick={() => remove(u)}>
-                            Odstrániť
-                          </Button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-        <Card title="Dôvody zamietnutia">
-          {summary.reasons.length === 0 ? (
-            <p className="muted">Žiadne zamietnuté pokusy.</p>
-          ) : (
-            <ul className="bars">
-              {summary.reasons.map(([reason, count]) => (
-                <li key={reason}>
-                  <span>{REASON_LABELS[reason] ?? reason}</span>
-                  <span className="bars__track">
-                    <span style={{ width: `${(count / summary.reasons[0]![1]) * 100}%` }} />
-                  </span>
-                  <span>{count}</span>
-                </li>
               ))}
-            </ul>
-          )}
-        </Card>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      </Section>
 
-      <Card
-        title="Audit prihlásení"
+      <Section title="Dôvody zamietnutia">
+        {summary.reasons.length === 0 ? (
+          <p className="muted">Žiadne zamietnuté pokusy.</p>
+        ) : (
+          <ul className="bars">
+            {summary.reasons.map(([reason, count]) => (
+              <li key={reason}>
+                <span>{REASON_LABELS[reason] ?? reason}</span>
+                <span className="bars__track">
+                  <span style={{ width: `${(count / summary.reasons[0]![1]) * 100}%` }} />
+                </span>
+                <span>{count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section
+        title="Audit"
         actions={
-          <Button variant="ghost" onClick={reload}>
+          <Button variant="link" onClick={reload}>
             Obnoviť
           </Button>
         }
       >
-        <AttemptsTable attempts={attempts} showUser />
-      </Card>
+        <AttemptsTable attempts={attempts} detailed />
+      </Section>
     </div>
   );
 }

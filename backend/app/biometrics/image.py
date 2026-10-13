@@ -1,5 +1,3 @@
-"""Decoding and normalisation of images received from clients."""
-
 from __future__ import annotations
 
 import base64
@@ -14,10 +12,8 @@ _DATA_URL_SEPARATOR = ";base64,"
 
 
 def decode_base64_image(data: str, *, max_bytes: int, max_side: int) -> np.ndarray:
-    """Decode a base64 (optionally ``data:`` URL) JPEG/PNG into a BGR ``uint8`` array."""
     if _DATA_URL_SEPARATOR in data[:64]:
         data = data.split(_DATA_URL_SEPARATOR, 1)[1]
-    # base64 inflates size by 4/3 – reject early before decoding
     if len(data) * 3 // 4 > max_bytes:
         raise PayloadTooLargeError("Image exceeds the maximum allowed size")
     try:

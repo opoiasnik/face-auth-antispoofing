@@ -1,8 +1,6 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/auth/context";
-
-import { Button } from "./ui";
 
 export function Layout() {
   const { user, signOut } = useAuth();
@@ -16,23 +14,22 @@ export function Layout() {
   return (
     <div className="app">
       <header className="topbar">
-        <NavLink to="/" className="brand">
-          <img src="/favicon.svg" alt="" width={28} height={28} />
+        <Link to="/" className="wordmark">
           FaceAuth
-        </NavLink>
+        </Link>
         <nav className="nav">
           {user ? (
             <>
-              <NavLink to="/dashboard">Môj účet</NavLink>
-              {user.is_admin && <NavLink to="/admin">Administrácia</NavLink>}
-              <Button variant="ghost" onClick={logout}>
+              <NavLink to="/dashboard">Účet</NavLink>
+              {user.is_admin && <NavLink to="/admin">Správa</NavLink>}
+              <button type="button" className="nav__button" onClick={logout}>
                 Odhlásiť
-              </Button>
+              </button>
             </>
           ) : (
             <>
-              <NavLink to="/login">Prihlásenie</NavLink>
-              <NavLink to="/enroll">Registrácia</NavLink>
+              <NavLink to="/login">Prihlásiť</NavLink>
+              <NavLink to="/enroll">Registrovať</NavLink>
             </>
           )}
         </nav>
@@ -40,9 +37,6 @@ export function Layout() {
       <main className="content">
         <Outlet />
       </main>
-      <footer className="footer muted small">
-        Biometrická autentifikácia tváre s ochranou proti falšovaniu · semestrálny projekt BSB
-      </footer>
     </div>
   );
 }

@@ -6,7 +6,7 @@ from app.biometrics.types import ChallengeAction
 from app.container import Container
 from app.repositories.users import UserRepository
 from tests.conftest import build_frames, enroll, new_challenge
-from tests.fakes import encode, make_empty_frame
+from tests.fakes import encode, make_empty_frame, make_frame
 
 
 def _verify(client: TestClient, username: str, **frame_kwargs):  # type: ignore[no-untyped-def]
@@ -37,7 +37,8 @@ def test_challenge_structure(client: TestClient) -> None:
     assert challenge["actions"][0] == "center"
     assert len(challenge["actions"]) == 3
     assert len(set(challenge["actions"][1:])) == 2
-    assert challenge["capture"]["frames_per_step"] == 5
+    assert challenge["capture"]["max_frames_per_step"] == 10
+    assert challenge["capture"]["yaw_threshold"] > 0
 
 
 def test_enroll_then_verify(client: TestClient) -> None:
@@ -79,12 +80,17 @@ def test_passive_spoof_is_rejected(client: TestClient) -> None:
 
 def test_static_photo_fails_active_challenge(client: TestClient) -> None:
     enroll(client, "alice", identity=1)
-    # a printed photo stays frontal during every step
     response = _verify(
         client, "alice", identity=1, override={1: ChallengeAction.CENTER, 2: ChallengeAction.CENTER}
     )
     assert response.status_code == 401
-    assert _error(response)["details"]["reason"] == "active_challenge_failed"
+    details = _error(response)["details"]
+    assert details["reason"] == "active_challenge_failed"
+    assert details["failed_action"] == challenge_failed_action(details)
+
+
+def challenge_failed_action(details: dict) -> str:  # type: ignore[type-arg]
+    return next(s["action"] for s in details["active_liveness"]["steps"] if not s["passed"])
 
 
 def test_face_swap_during_session_is_rejected(client: TestClient) -> None:
@@ -194,7 +200,7 @@ def test_lockout_after_repeated_failures(client: TestClient) -> None:
 def test_account_endpoints(client: TestClient) -> None:
     token = enroll(client, "alice", identity=1)["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
-    _verify(client, "alice", identity=5)  # failed attempt is attributed to alice
+    _verify(client, "alice", identity=5)
 
     assert client.get("/api/v1/users/me").status_code == 401
     assert client.get("/api/v1/users/me", headers=headers).json()["username"] == "alice"
@@ -251,6 +257,12 @@ def test_invalid_image_payload(client: TestClient) -> None:
 
 
 def test_quality_endpoint(client: TestClient) -> None:
-    ok = client.post("/api/v1/biometrics/quality", json={"image": encode(make_empty_frame())})
-    assert ok.status_code == 200
-    assert ok.json()["issues"] == ["no_face"]
+    empty = client.post("/api/v1/biometrics/quality", json={"image": encode(make_empty_frame())})
+    assert empty.status_code == 200
+    assert empty.json()["issues"] == ["no_face"]
+    assert empty.json()["yaw"] is None
+
+    turned = encode(make_frame(1, ChallengeAction.TURN_LEFT))
+    body = client.post("/api/v1/biometrics/quality", json={"image": turned}).json()
+    assert body["ok"] is True
+    assert body["yaw"] > 0.3

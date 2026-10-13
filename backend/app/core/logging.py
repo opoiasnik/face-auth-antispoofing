@@ -1,5 +1,3 @@
-"""Logging configuration (human readable in development, JSON lines in production)."""
-
 from __future__ import annotations
 
 import json

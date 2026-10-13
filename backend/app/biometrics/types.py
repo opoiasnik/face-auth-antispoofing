@@ -1,5 +1,3 @@
-"""Value objects shared by the biometric components."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -10,15 +8,7 @@ import numpy as np
 
 @dataclass(frozen=True, slots=True)
 class FaceDetection:
-    """A detected face.
-
-    ``landmarks`` is a (5, 2) array in image coordinates in YuNet order:
-    right eye, left eye, nose tip, right mouth corner, left mouth corner
-    (from the subject's point of view). ``raw`` is the original 15-value
-    detector row required by the SFace alignment routine.
-    """
-
-    bbox: tuple[float, float, float, float]  # x, y, width, height
+    bbox: tuple[float, float, float, float]
     landmarks: np.ndarray
     score: float
     raw: np.ndarray
@@ -65,15 +55,6 @@ class QualityReport:
 
 @dataclass(frozen=True, slots=True)
 class HeadPose:
-    """Geometric head-pose proxies computed from the 5 facial landmarks.
-
-    ``yaw``   – horizontal nose offset from the eye midpoint, normalised by the
-                inter-ocular distance. Positive values mean the subject turned
-                to *their* left (nose moves to the right of a non-mirrored frame).
-    ``pitch`` – vertical position of the nose between the eye line (0) and the
-                mouth line (1). Looking up decreases it, looking down increases it.
-    """
-
     yaw: float
     pitch: float
 
@@ -126,8 +107,6 @@ class ActiveLivenessResult:
 
 @dataclass(slots=True)
 class SessionResult:
-    """Outcome of analysing a full challenge session (all captured frames)."""
-
     frames: list[FrameAnalysis]
     passive_score: float | None
     active: ActiveLivenessResult | None

@@ -1,5 +1,3 @@
-"""Use cases: enrollment, re-enrollment, 1:1 verification and 1:N identification."""
-
 from __future__ import annotations
 
 import logging
@@ -51,7 +49,7 @@ class ClientContext:
 @dataclass(frozen=True, slots=True)
 class CaptureSubmission:
     challenge_id: str
-    frames: Sequence[tuple[int, str]]  # (step index, base64 image)
+    frames: Sequence[tuple[int, str]]
 
 
 @dataclass(slots=True)
@@ -93,8 +91,6 @@ class BiometricAuthService:
         self._templates = TemplateRepository(db)
         self._matcher = TemplateMatcher(settings.matching.threshold)
 
-    # -- use cases ----------------------------------------------------------------------------
-
     def enroll(
         self,
         username: str,
@@ -121,7 +117,6 @@ class BiometricAuthService:
             draft.user_id = user.id
             session = self._run_session(ChallengePurpose.ENROLL, submission, draft)
             assert session.template is not None
-            # the new template must still belong to the same person
             outcome = self._match_user(user, session.template, draft)
             self._templates.replace_for_user(user.id, self._new_template(user.id, session))
             return AuthOutcome(user=user, session=session, match_score=outcome)
@@ -136,7 +131,7 @@ class BiometricAuthService:
             user = self._users.get_by_username(username)
             if user is None or not user.is_active:
                 raise self._rejection(RejectionReason.NO_MATCH, session)
-            draft.user_id = user.id  # failed attempts are visible in the user's own history
+            draft.user_id = user.id
             score = self._match_user(user, session.template, draft)
             return AuthOutcome(user=user, session=session, match_score=score)
 
@@ -151,8 +146,6 @@ class BiometricAuthService:
             user = result.key
             draft.user_id, draft.username = user.id, user.username
             return AuthOutcome(user=user, session=session, match_score=result.score)
-
-    # -- helpers ------------------------------------------------------------------------------
 
     def _run_session(
         self, purpose: ChallengePurpose, submission: CaptureSubmission, draft: _AttemptDraft
@@ -232,20 +225,25 @@ class BiometricAuthService:
         self, reason: RejectionReason, session: SessionResult, *, score: float | None = None
     ) -> BiometricRejectedError:
         details: dict[str, object] = {}
+        failed = (
+            next((s.action.value for s in session.active.steps if not s.passed), None)
+            if session.active is not None
+            else None
+        )
         if self._settings.security.expose_scores:
             details = session.summary()
             if score is not None:
                 details["match_score"] = round(score, 4)
         elif session.quality_issues:
-            # quality hints are safe to expose and help the user to retry
             details = {"quality_issues": session.quality_issues}
+        if reason is RejectionReason.ACTIVE_CHALLENGE_FAILED and failed is not None:
+            details["failed_action"] = failed
         return BiometricRejectedError(reason.value, _REJECTION_MESSAGES[reason], details=details)
 
     @contextmanager
     def _attempt(
         self, mode: str, ctx: ClientContext, username: str | None
     ) -> Iterator[_AttemptDraft]:
-        """Unit of work + audit trail: commit/rollback the request, then log the attempt."""
         draft = _AttemptDraft(mode=mode, username=username)
         started = time.perf_counter()
         failure: str | None = None
@@ -286,7 +284,7 @@ class BiometricAuthService:
         )
         try:
             self._audit.record(attempt)
-        except Exception:  # auditing must never break authentication
+        except Exception:
             logger.exception("Failed to write audit record")
         logger.info(
             "biometric %s user=%s success=%s reason=%s",

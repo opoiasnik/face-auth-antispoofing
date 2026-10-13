@@ -1,15 +1,3 @@
-"""Download pretrained ONNX models into ``backend/models``.
-
-Usage::
-
-    python scripts/download_models.py [--dest models] [--force]
-
-Models:
-  * YuNet face detector             – OpenCV Zoo (MIT)
-  * SFace face recogniser           – OpenCV Zoo (Apache-2.0)
-  * MiniFASNetV2 / MiniFASNetV1SE   – Silent-Face-Anti-Spoofing, ONNX export by yakhyo (Apache-2.0)
-"""
-
 from __future__ import annotations
 
 import argparse

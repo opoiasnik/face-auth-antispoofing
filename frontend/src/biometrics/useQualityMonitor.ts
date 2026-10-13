@@ -7,7 +7,6 @@ import { QUALITY_MAX_WIDTH, QUALITY_POLL_MS } from "@/config";
 
 import { sleep } from "./schedule";
 
-/** Periodically asks the server whether the face is well positioned (pre-flight guidance). */
 export function useQualityMonitor(
   videoRef: RefObject<HTMLVideoElement | null>,
   enabled: boolean,
@@ -21,12 +20,9 @@ export function useQualityMonitor(
       while (!controller.signal.aborted) {
         const video = videoRef.current;
         if (video?.videoWidth) {
-          try {
-            const image = captureFrame(video, QUALITY_MAX_WIDTH, 0.8);
-            setQuality(await biometricsApi.checkQuality(image, controller.signal));
-          } catch {
-            // transient errors are ignored, the next poll retries
-          }
+          const image = captureFrame(video, QUALITY_MAX_WIDTH, 0.8);
+          const result = await biometricsApi.checkQuality(image, controller.signal).catch(() => null);
+          if (result) setQuality(result);
         }
         await sleep(QUALITY_POLL_MS, controller.signal).catch(() => undefined);
       }

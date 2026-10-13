@@ -44,7 +44,7 @@ class TestHeadPose:
 
     def test_yaw_sign(self) -> None:
         turned = FRONTAL.copy()
-        turned[2, 0] += 15  # nose to the right of a non-mirrored frame
+        turned[2, 0] += 15
         assert estimate_head_pose(turned).yaw > 0.3
 
     def test_roll_invariance(self) -> None:
@@ -102,7 +102,7 @@ class TestActiveLiveness:
             assert actions[0] is ChallengeAction.CENTER
             assert len(set(actions[1:])) == 2
             seen.add(tuple(actions))
-        assert len(seen) == 6  # all 3P2 permutations occur
+        assert len(seen) == 6
         with pytest.raises(ValueError):
             generate_actions(pool, 4)
 
@@ -188,3 +188,21 @@ class TestChallenges:
     def test_serialisation(self) -> None:
         challenge = self._service().issue(ChallengePurpose.ENROLL)
         assert Challenge.from_json(challenge.to_json()) == challenge
+
+
+def test_blurred_frame_still_counts_for_head_pose() -> None:
+    from app.biometrics.factory import build_engine
+    from app.core.config import QualitySettings
+    from tests.fakes import FakeDetector, FakeEmbedder, FakeLiveness, make_frame
+
+    settings = Settings(environment="test", quality=QualitySettings(min_sharpness=1e9))
+    engine = build_engine(
+        settings,
+        detector=FakeDetector(),
+        embedder=FakeEmbedder(),
+        passive_liveness=FakeLiveness(),
+    )
+    analysis = engine.analyze_frame(make_frame(1, ChallengeAction.TURN_LEFT), step=1)
+    assert not analysis.usable
+    assert analysis.pose is not None and analysis.pose.yaw > 0.3
+    assert analysis.embedding is None and analysis.liveness_score is None

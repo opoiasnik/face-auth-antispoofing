@@ -1,10 +1,3 @@
-"""Latency benchmark of the individual pipeline stages on CPU.
-
-Usage::
-
-    python -m evaluation.benchmark --image path/to/face.jpg --runs 200
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -64,8 +57,11 @@ def main() -> int:
         "Celý snímok": lambda: engine.analyze_frame(image),
     }
     results = {name: measure(fn, args.runs) for name, fn in stages.items()}
-    steps = settings.active_liveness.steps + 1  # center + random actions
-    per_session = results["Celý snímok"]["mean_ms"] * steps * settings.challenge.frames_per_step
+    cap = settings.challenge
+    frames = cap.center_duration_ms // cap.frame_interval_ms + (
+        settings.active_liveness.steps * cap.max_frames_per_step
+    )
+    per_session = results["Celý snímok"]["mean_ms"] * frames
 
     out = output_dir(args.out, "benchmark")
     write_json(

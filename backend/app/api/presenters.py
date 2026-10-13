@@ -1,5 +1,3 @@
-"""Mapping between service results and API schemas."""
-
 from __future__ import annotations
 
 from app.container import Container

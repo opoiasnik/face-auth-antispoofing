@@ -10,8 +10,6 @@ from app.db.models import AuthAttempt
 
 
 class AuditRepository:
-    """Audit records are written in their own transaction so they survive request rollbacks."""
-
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -39,7 +37,6 @@ class AuditRepository:
             return session.scalars(stmt.offset(offset).limit(limit)).all()
 
     def stats(self) -> list[tuple[str, bool, str | None, int]]:
-        """Counts grouped by (mode, success, failure_reason)."""
         stmt = select(
             AuthAttempt.mode,
             AuthAttempt.success,

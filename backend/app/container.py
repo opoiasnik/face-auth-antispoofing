@@ -1,5 +1,3 @@
-"""Composition root: wires infrastructure objects shared for the application lifetime."""
-
 from __future__ import annotations
 
 import logging

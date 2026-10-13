@@ -1,5 +1,3 @@
-"""Matplotlib figures for the technical report (PNG + PDF for LaTeX)."""
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -78,7 +76,6 @@ def roc_plot(
     *,
     far_label: str = "FAR",
 ) -> None:
-    """ROC: genuine acceptance rate (1-FRR) vs. FAR on a log axis."""
     fig, ax = plt.subplots(figsize=(5.2, 4.4))
     for label, (genuine, impostor) in curves.items():
         _, far, frr = roc_curve(genuine, impostor)
@@ -99,7 +96,6 @@ def det_plot(
     xlabel: str = "FAR [%]",
     ylabel: str = "FRR [%]",
 ) -> None:
-    """Detection Error Trade-off on normal-deviate axes (ISO/IEC 19795-1)."""
     ticks = np.array([0.001, 0.01, 0.05, 0.2, 0.5])
     fig, ax = plt.subplots(figsize=(5.2, 4.4))
     for label, (genuine, impostor) in curves.items():

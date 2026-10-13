@@ -1,11 +1,3 @@
-"""Deterministic stand-ins for the neural models.
-
-A synthetic frame carries its ground truth in the top-left pixel (B, G, R):
-  * B – identity id (embedding is a one-hot vector at that index)
-  * G – pose code (see ``POSE_CODES``)
-  * R – 255 = live presentation, anything else = spoof
-"""
-
 from __future__ import annotations
 
 import base64

@@ -1,5 +1,3 @@
-"""Fixed-window rate limiting with in-memory and Redis backends."""
-
 from __future__ import annotations
 
 import threading
@@ -11,14 +9,10 @@ if TYPE_CHECKING:
 
 
 class RateLimiter(Protocol):
-    def hit(self, key: str, limit: int, window_seconds: int) -> bool:
-        """Register a hit; return ``False`` when the limit for the window is exceeded."""
-        ...
+    def hit(self, key: str, limit: int, window_seconds: int) -> bool: ...
 
 
 class InMemoryRateLimiter:
-    """Single-process limiter. Use :class:`RedisRateLimiter` with multiple workers."""
-
     def __init__(self) -> None:
         self._buckets: dict[str, tuple[int, int]] = {}
         self._lock = threading.Lock()

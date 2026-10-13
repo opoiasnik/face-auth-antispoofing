@@ -1,5 +1,3 @@
-"""Sample quality assessment (ISO/IEC 29794-5 inspired, simplified)."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -33,7 +31,6 @@ def _face_crop(image: np.ndarray, face: FaceDetection) -> np.ndarray:
 
 
 def sharpness(gray_face: np.ndarray) -> float:
-    """Variance of the Laplacian on a size-normalised crop (higher = sharper)."""
     resized = cv2.resize(gray_face, (_SHARPNESS_SIZE, _SHARPNESS_SIZE))
     return float(cv2.Laplacian(resized, cv2.CV_64F).var())
 

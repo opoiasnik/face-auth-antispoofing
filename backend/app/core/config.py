@@ -1,8 +1,3 @@
-"""Application configuration loaded from environment variables (prefix ``FA_``).
-
-Nested groups use ``__`` as a delimiter, e.g. ``FA_MATCHING__THRESHOLD=0.4``.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -45,10 +40,10 @@ class DetectionSettings(BaseModel):
 
 
 class QualitySettings(BaseModel):
-    min_face_size: int = Field(default=90, ge=0, description="Minimal face bbox side in pixels")
-    min_sharpness: float = Field(default=25.0, ge=0.0, description="Laplacian variance")
-    min_brightness: float = Field(default=50.0, ge=0.0, le=255.0)
-    max_brightness: float = Field(default=215.0, ge=0.0, le=255.0)
+    min_face_size: int = Field(default=80, ge=0, description="Minimal face bbox side in pixels")
+    min_sharpness: float = Field(default=12.0, ge=0.0, description="Laplacian variance")
+    min_brightness: float = Field(default=40.0, ge=0.0, le=255.0)
+    max_brightness: float = Field(default=225.0, ge=0.0, le=255.0)
     secondary_face_area_ratio: float = Field(
         default=0.15,
         ge=0.0,
@@ -60,7 +55,10 @@ class QualitySettings(BaseModel):
 class PassiveLivenessSettings(BaseModel):
     threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     min_frame_score: float = Field(
-        default=0.30, ge=0.0, le=1.0, description="Any single frame below this fails the session"
+        default=0.20,
+        ge=0.0,
+        le=1.0,
+        description="Any frontal frame below this fails the session",
     )
 
 
@@ -74,12 +72,12 @@ def _all_actions() -> list[ActionName]:
 class ActiveLivenessSettings(BaseModel):
     actions: list[ActionName] = Field(default_factory=_all_actions, min_length=1)
     steps: int = Field(default=2, ge=1, le=4, description="Number of random actions per challenge")
-    center_max_yaw: float = Field(default=0.22, ge=0.0)
+    center_max_yaw: float = Field(default=0.35, ge=0.0)
     yaw_threshold: float = Field(default=0.20, gt=0.0)
     pitch_threshold: float = Field(default=0.07, gt=0.0)
     min_frames_over_threshold: int = Field(default=2, ge=1)
     min_face_ratio: float = Field(
-        default=0.8, ge=0.0, le=1.0, description="Share of frames that must contain a valid face"
+        default=0.5, ge=0.0, le=1.0, description="Share of frames of a step with a detected face"
     )
 
     @model_validator(mode="after")
@@ -91,9 +89,11 @@ class ActiveLivenessSettings(BaseModel):
 
 class ChallengeSettings(BaseModel):
     ttl_seconds: int = Field(default=90, ge=10)
-    frames_per_step: int = Field(default=5, ge=1, le=10)
-    step_duration_ms: int = Field(default=2200, ge=500)
-    lead_in_ms: int = Field(default=700, ge=0)
+    center_duration_ms: int = Field(default=1600, ge=500)
+    frame_interval_ms: int = Field(default=220, ge=50)
+    action_timeout_ms: int = Field(default=5000, ge=1000)
+    hold_after_detection_ms: int = Field(default=600, ge=0)
+    max_frames_per_step: int = Field(default=10, ge=2, le=20)
 
 
 class MatchingSettings(BaseModel):
@@ -117,7 +117,7 @@ class SecuritySettings(BaseModel):
     rate_limit_per_minute: int = Field(default=20, ge=1)
     max_request_bytes: int = Field(default=20 * 1024 * 1024, ge=1024)
     max_frame_bytes: int = Field(default=2 * 1024 * 1024, ge=1024)
-    max_frames: int = Field(default=40, ge=1)
+    max_frames: int = Field(default=50, ge=1)
 
 
 class Settings(BaseSettings):
@@ -151,7 +151,6 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def _use_psycopg_driver(cls, value: str) -> str:
-        """Hosting providers hand out ``postgres://`` URLs; SQLAlchemy needs an explicit driver."""
         for prefix in ("postgres://", "postgresql://"):
             if value.startswith(prefix):
                 return "postgresql+psycopg://" + value[len(prefix) :]
@@ -177,13 +176,6 @@ class Settings(BaseSettings):
         return self.database_url.startswith("sqlite")
 
     def template_key(self) -> bytes:
-        """Fernet key for biometric templates.
-
-        A valid Fernet key is used as is; any other secret (e.g. a value generated
-        by the hosting platform) is stretched with SHA-256. Outside production a
-        stable key is derived from the JWT secret so that a development database
-        survives restarts without extra configuration.
-        """
         configured = self.security.template_encryption_key
         secret = (configured or self.security.jwt_secret).get_secret_value()
         if configured is not None and _is_fernet_key(secret):

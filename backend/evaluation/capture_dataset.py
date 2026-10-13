@@ -1,15 +1,3 @@
-"""Record a PAD dataset with a webcam.
-
-Run once per presentation type, e.g.::
-
-    python -m evaluation.capture_dataset --out data/pad --label bona_fide --count 150
-    python -m evaluation.capture_dataset --out data/pad --label attack/print --count 150
-    python -m evaluation.capture_dataset --out data/pad --label attack/replay --count 150
-
-Controls: SPACE starts/pauses recording, Q quits. Only frames with exactly one
-detected face are stored. Vary distance, lighting and angle while recording.
-"""
-
 from __future__ import annotations
 
 import argparse

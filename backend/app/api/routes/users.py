@@ -45,13 +45,11 @@ def reenroll_face(
     container: ContainerDep,
     ctx: ClientDep,
 ) -> AuthResponse:
-    """Replace the stored template (e.g. after appearance change). Requires a matching face."""
     outcome = service.reenroll(user, to_submission(body), ctx)
     return to_auth_response(container, outcome)
 
 
 @router.delete("", status_code=204)
 def delete_me(user: CurrentUser, db: DbDep) -> Response:
-    """Right to erasure (GDPR art. 17): removes the account and all biometric templates."""
     UserRepository(db).delete(user)
     return Response(status_code=204)

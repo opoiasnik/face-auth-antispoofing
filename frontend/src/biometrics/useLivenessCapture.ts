@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
 import { biometricsApi, type CaptureBody } from "@/api/endpoints";
-import type { ChallengeAction, ChallengePurpose, Frame } from "@/api/types";
+import type { Challenge, ChallengeAction, ChallengePurpose, Frame } from "@/api/types";
 import { captureFrame } from "@/camera/frames";
+import { QUALITY_MAX_WIDTH } from "@/config";
 
-import { captureOffsets, sleep } from "./schedule";
+import { medianPose, movementProgress, type Pose } from "./pose";
+import { sleep } from "./schedule";
 
 export type CapturePhase = "idle" | "challenge" | "capturing" | "verifying";
 
@@ -12,22 +14,92 @@ export interface CaptureProgress {
   phase: CapturePhase;
   actions: ChallengeAction[];
   step: number;
-  /** 0..1 progress within the current step */
   stepProgress: number;
+  stepDone: boolean;
 }
 
-const IDLE: CaptureProgress = { phase: "idle", actions: [], step: 0, stepProgress: 0 };
+const IDLE: CaptureProgress = { phase: "idle", actions: [], step: 0, stepProgress: 0, stepDone: false };
+const STEP_PAUSE_MS = 300;
 
-/**
- * Runs a liveness session: obtains a challenge, guides the user through the
- * random head movements while capturing frames, then hands the frames to
- * ``submit`` (enrollment / verification / identification).
- */
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
 export function useLivenessCapture(videoRef: RefObject<HTMLVideoElement | null>) {
   const [progress, setProgress] = useState<CaptureProgress>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  const grab = useCallback(
+    (maxWidth?: number, quality?: number) => {
+      const video = videoRef.current;
+      if (!video) throw new Error("Kamera nie je dostupná");
+      return captureFrame(video, maxWidth, quality);
+    },
+    [videoRef],
+  );
+
+  const captureStep = useCallback(
+    async (
+      challenge: Challenge,
+      step: number,
+      baseline: Pose | null,
+      centerPoses: Pose[],
+      signal: AbortSignal,
+    ): Promise<Frame[]> => {
+      const cap = challenge.capture;
+      const action = challenge.actions[step]!;
+      const isCenter = action === "center";
+      const frames: Frame[] = [];
+      const start = performance.now();
+      let detectedAt: number | null = null;
+      let pending = false;
+
+      const readPose = () => {
+        if (pending) return;
+        pending = true;
+        biometricsApi
+          .checkQuality(grab(QUALITY_MAX_WIDTH, 0.7), signal)
+          .then((result) => {
+            if (result.yaw === null || result.pitch === null) return;
+            const pose = { yaw: result.yaw, pitch: result.pitch };
+            if (isCenter) {
+              centerPoses.push(pose);
+              return;
+            }
+            if (!baseline) return;
+            const moved = movementProgress(action, pose, baseline, cap);
+            setProgress((p) => ({ ...p, stepProgress: Math.max(p.stepProgress, clamp01(moved)) }));
+            if (moved >= 1 && detectedAt === null) {
+              detectedAt = performance.now();
+              setProgress((p) => ({ ...p, stepDone: true }));
+            }
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            pending = false;
+          });
+      };
+
+      for (;;) {
+        const now = performance.now();
+        const elapsed = now - start;
+        if (isCenter) {
+          if (elapsed >= cap.center_duration_ms) break;
+          setProgress((p) => ({ ...p, stepProgress: elapsed / cap.center_duration_ms }));
+        } else {
+          if (detectedAt !== null && now - detectedAt >= cap.hold_after_detection_ms) break;
+          if (elapsed >= cap.action_timeout_ms) break;
+          if (!baseline) setProgress((p) => ({ ...p, stepProgress: elapsed / cap.action_timeout_ms }));
+        }
+        frames.push({ step, image: grab() });
+        if (frames.length > cap.max_frames_per_step) frames.shift();
+        readPose();
+        await sleep(cap.frame_interval_ms, signal);
+      }
+      return frames;
+    },
+    [grab],
+  );
 
   const run = useCallback(
     async <T>(purpose: ChallengePurpose, submit: (body: CaptureBody) => Promise<T>): Promise<T> => {
@@ -39,31 +111,32 @@ export function useLivenessCapture(videoRef: RefObject<HTMLVideoElement | null>)
       try {
         setProgress({ ...IDLE, phase: "challenge" });
         const challenge = await biometricsApi.createChallenge(purpose, signal);
-        const { step_duration_ms: stepDuration } = challenge.capture;
-        const offsets = captureOffsets(challenge.capture);
         const frames: Frame[] = [];
+        const centerPoses: Pose[] = [];
+        let baseline: Pose | null = null;
 
         for (let step = 0; step < challenge.actions.length; step++) {
-          const stepStart = performance.now();
-          setProgress({ phase: "capturing", actions: challenge.actions, step, stepProgress: 0 });
-          for (const offset of offsets) {
-            await sleep(Math.max(0, offset - (performance.now() - stepStart)), signal);
-            const video = videoRef.current;
-            if (!video) throw new Error("Kamera nie je dostupná");
-            frames.push({ step, image: captureFrame(video) });
-            setProgress((p) => ({ ...p, stepProgress: offset / stepDuration }));
-          }
-          await sleep(Math.max(0, stepDuration - (performance.now() - stepStart)), signal);
+          setProgress({
+            phase: "capturing",
+            actions: challenge.actions,
+            step,
+            stepProgress: 0,
+            stepDone: false,
+          });
+          frames.push(...(await captureStep(challenge, step, baseline, centerPoses, signal)));
+          if (step === 0) baseline = medianPose(centerPoses);
+          setProgress((p) => ({ ...p, stepProgress: 1, stepDone: true }));
+          await sleep(STEP_PAUSE_MS, signal);
         }
 
-        setProgress((p) => ({ ...p, phase: "verifying", stepProgress: 1 }));
+        setProgress((p) => ({ ...p, phase: "verifying" }));
         return await submit({ challenge_id: challenge.challenge_id, frames });
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
         setProgress(IDLE);
       }
     },
-    [videoRef],
+    [captureStep],
   );
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);

@@ -1,5 +1,3 @@
-"""Domain exceptions and their mapping to HTTP responses."""
-
 from __future__ import annotations
 
 import logging
@@ -68,8 +66,6 @@ class ServiceUnavailableError(AppError):
 
 
 class BiometricRejectedError(AppError):
-    """Raised when a biometric session fails (quality, liveness or matching)."""
-
     status_code = 401
     code = "biometric_rejected"
 

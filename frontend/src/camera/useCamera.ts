@@ -23,7 +23,6 @@ function describeError(error: unknown): string {
   return "Kameru sa nepodarilo spustiť.";
 }
 
-/** Manages the lifetime of a webcam stream attached to a <video> element. */
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);

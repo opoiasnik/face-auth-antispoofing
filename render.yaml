@@ -1,5 +1,3 @@
-# Render Blueprint – backend API + PostgreSQL.
-# Dashboard → New → Blueprint → select this repository.
 services:
   - type: web
     name: faceauth-api
@@ -20,8 +18,6 @@ services:
         generateValue: true
       - key: FA_SECURITY__EXPOSE_SCORES
         value: "false"
-      # the free instance has 512 MB RAM – one worker holding the models fits comfortably;
-      # with a single worker the in-memory challenge store / rate limiter are sufficient
       - key: WEB_CONCURRENCY
         value: "1"
       - key: FA_DATABASE_URL

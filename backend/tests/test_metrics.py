@@ -30,7 +30,6 @@ def test_eer_symmetric_overlap() -> None:
     genuine = rng.normal(1.0, 1.0, 20_000)
     impostor = rng.normal(-1.0, 1.0, 20_000)
     result = equal_error_rate(genuine, impostor)
-    # analytic EER for two unit Gaussians 2 sigma apart = Phi(-1) ≈ 0.1587
     assert result.eer == pytest.approx(0.1587, abs=0.01)
     assert result.threshold == pytest.approx(0.0, abs=0.05)
 

@@ -24,7 +24,6 @@ router = APIRouter(tags=["biometrics"])
     dependencies=[Depends(rate_limit("challenge"))],
 )
 def create_challenge(body: ChallengeRequest, container: ContainerDep) -> ChallengeResponse:
-    """Issue a single-use liveness challenge (random head-movement sequence)."""
     challenge = container.challenges.issue(body.purpose)
     cfg = container.challenges.settings
     return ChallengeResponse(
@@ -33,9 +32,13 @@ def create_challenge(body: ChallengeRequest, container: ContainerDep) -> Challen
         actions=list(challenge.actions),
         expires_in=max(int(challenge.expires_at - time.time()), 0),
         capture=CaptureParameters(
-            frames_per_step=cfg.frames_per_step,
-            step_duration_ms=cfg.step_duration_ms,
-            lead_in_ms=cfg.lead_in_ms,
+            center_duration_ms=cfg.center_duration_ms,
+            frame_interval_ms=cfg.frame_interval_ms,
+            action_timeout_ms=cfg.action_timeout_ms,
+            hold_after_detection_ms=cfg.hold_after_detection_ms,
+            max_frames_per_step=cfg.max_frames_per_step,
+            yaw_threshold=container.settings.active_liveness.yaw_threshold,
+            pitch_threshold=container.settings.active_liveness.pitch_threshold,
         ),
     )
 
@@ -43,22 +46,23 @@ def create_challenge(body: ChallengeRequest, container: ContainerDep) -> Challen
 @router.post(
     "/biometrics/quality",
     response_model=QualityCheckResponse,
-    dependencies=[Depends(rate_limit("quality", per_minute=120))],
+    dependencies=[Depends(rate_limit("quality", per_minute=300))],
 )
 def quality_check(
     body: QualityCheckRequest, container: ContainerDep, engine: EngineDep
 ) -> QualityCheckResponse:
-    """Lightweight pre-flight check used by the UI to guide the user before capture."""
     image = decode_base64_image(
         body.image,
         max_bytes=container.settings.security.max_frame_bytes,
         max_side=container.settings.detection.max_image_side,
     )
-    report = engine.check_quality(image)
+    report, pose = engine.inspect(image)
     return QualityCheckResponse(
         ok=report.ok,
         issues=list(report.issues),
         face_size=round(report.face_size, 1),
         sharpness=round(report.sharpness, 1),
         brightness=round(report.brightness, 1),
+        yaw=None if pose is None else round(pose.yaw, 3),
+        pitch=None if pose is None else round(pose.pitch, 3),
     )

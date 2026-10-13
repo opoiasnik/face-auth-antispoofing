@@ -18,7 +18,6 @@ router = APIRouter(tags=["authentication"])
 def enroll(
     body: EnrollRequest, service: AuthServiceDep, container: ContainerDep, ctx: ClientDep
 ) -> AuthResponse:
-    """Create a user and their face template after a successful liveness session."""
     outcome = service.enroll(body.username, body.full_name, to_submission(body), ctx)
     return to_auth_response(container, outcome)
 
@@ -31,7 +30,6 @@ def enroll(
 def verify(
     body: VerifyRequest, service: AuthServiceDep, container: ContainerDep, ctx: ClientDep
 ) -> AuthResponse:
-    """1:1 verification – the user claims an identity (username) and proves it by face."""
     outcome = service.verify(body.username, to_submission(body), ctx)
     return to_auth_response(container, outcome)
 
@@ -44,6 +42,5 @@ def verify(
 def identify(
     body: IdentifyRequest, service: AuthServiceDep, container: ContainerDep, ctx: ClientDep
 ) -> AuthResponse:
-    """1:N identification – passwordless login by face only."""
     outcome = service.identify(to_submission(body), ctx)
     return to_auth_response(container, outcome)

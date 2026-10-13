@@ -52,7 +52,6 @@ def build_frames(
     per_step: int = 5,
     override: dict[int, ChallengeAction] | None = None,
 ) -> list[dict[str, Any]]:
-    """Frames that perform the challenge (``override`` replaces the action of given steps)."""
     frames = []
     for step, action in enumerate(actions):
         performed = (override or {}).get(step, ChallengeAction(action))

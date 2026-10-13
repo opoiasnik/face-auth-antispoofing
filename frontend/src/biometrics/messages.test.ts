@@ -7,7 +7,15 @@ import { describeError, qualityHints } from "./messages";
 describe("describeError", () => {
   it("prefers the biometric rejection reason", () => {
     const error = new ApiError(401, "biometric_rejected", "x", { reason: "passive_spoof" });
-    expect(describeError(error)).toMatch(/podvrh/);
+    expect(describeError(error)).toMatch(/fotografiu/);
+  });
+
+  it("names the head movement that was not recognised", () => {
+    const error = new ApiError(401, "biometric_rejected", "x", {
+      reason: "active_challenge_failed",
+      failed_action: "turn_left",
+    });
+    expect(describeError(error)).toMatch(/doľava/);
   });
 
   it("falls back to the error code and then to the message", () => {
@@ -21,9 +29,6 @@ describe("qualityHints", () => {
     const error = new ApiError(401, "biometric_rejected", "x", {
       quality_issues: { too_dark: 1, no_face: 4 },
     });
-    expect(qualityHints(error)).toEqual([
-      "Tvár nie je v zábere",
-      "Príliš tma – zlepšite osvetlenie tváre",
-    ]);
+    expect(qualityHints(error)).toEqual(["Nevidíme vašu tvár", "Je príliš tma"]);
   });
 });

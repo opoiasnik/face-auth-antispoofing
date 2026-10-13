@@ -1,7 +1,6 @@
 const dateFormat = new Intl.DateTimeFormat("sk-SK", { dateStyle: "short", timeStyle: "medium" });
 
 export function formatDate(iso: string): string {
-  // the backend stores UTC; SQLite drops the offset, so treat naive timestamps as UTC
   const normalized = /[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`;
   return dateFormat.format(new Date(normalized));
 }

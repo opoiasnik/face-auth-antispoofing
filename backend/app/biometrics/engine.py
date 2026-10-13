@@ -1,5 +1,3 @@
-"""Orchestrates detection, quality, liveness and embedding for a capture session."""
-
 from __future__ import annotations
 
 import logging
@@ -17,8 +15,10 @@ from app.biometrics.liveness.pose import estimate_head_pose
 from app.biometrics.quality import QualityAssessor
 from app.biometrics.types import (
     ChallengeAction,
+    FaceDetection,
     FrameAnalysis,
     HeadPose,
+    QualityIssue,
     QualityReport,
     RejectionReason,
     SessionResult,
@@ -35,8 +35,6 @@ class SessionPolicy:
 
 
 class BiometricEngine:
-    """Facade over the biometric components. Stateless and safe to share between requests."""
-
     def __init__(
         self,
         *,
@@ -56,7 +54,6 @@ class BiometricEngine:
         self._policy = policy
         self.recognizer_version = recognizer_version
 
-    # read-only access to the components (used by the evaluation tooling)
     @property
     def detector(self) -> FaceDetector:
         return self._detector
@@ -73,32 +70,37 @@ class BiometricEngine:
     def quality(self) -> QualityAssessor:
         return self._quality
 
-    # -- single frame -------------------------------------------------------------------------
+    def inspect(self, image: np.ndarray) -> tuple[QualityReport, HeadPose | None]:
+        faces = self._detector.detect(image)
+        report = self._quality.assess(image, faces)
+        return report, self._pose(faces[0], report) if faces else None
 
-    def check_quality(self, image: np.ndarray) -> QualityReport:
-        return self._quality.assess(image, self._detector.detect(image))
+    @staticmethod
+    def _pose(face: FaceDetection, report: QualityReport) -> HeadPose | None:
+        if QualityIssue.MULTIPLE_FACES in report.issues:
+            return None
+        try:
+            return estimate_head_pose(face.landmarks)
+        except ValueError:
+            return None
 
     def analyze_frame(self, image: np.ndarray, step: int = 0) -> FrameAnalysis:
         faces = self._detector.detect(image)
         report = self._quality.assess(image, faces)
         analysis = FrameAnalysis(step=step, quality=report, face=faces[0] if faces else None)
+        if analysis.face is None:
+            return analysis
+        analysis.pose = self._pose(analysis.face, report)
         if not analysis.usable:
             return analysis
-        assert analysis.face is not None
-        try:
-            analysis.pose = estimate_head_pose(analysis.face.landmarks)
-        except ValueError:
-            logger.debug("Degenerate landmarks in step %d", step)
-        analysis.liveness_score = self._passive.score(image, analysis.face)
         analysis.embedding = self._embedder.embed(image, analysis.face)
+        if step == 0:
+            analysis.liveness_score = self._passive.score(image, analysis.face)
         return analysis
-
-    # -- session ------------------------------------------------------------------------------
 
     def evaluate_session(
         self, actions: Sequence[ChallengeAction], frames: Sequence[tuple[int, np.ndarray]]
     ) -> SessionResult:
-        """Analyse all frames of a challenge; ``frames`` holds ``(step_index, image)`` pairs."""
         analyses = [self.analyze_frame(image, step) for step, image in frames]
         usable = [a for a in analyses if a.usable and a.embedding is not None]
         issue_counts = Counter(issue.value for a in analyses for issue in a.quality.issues)
@@ -107,7 +109,7 @@ class BiometricEngine:
         poses: list[list[HeadPose]] = [[] for _ in actions]
         for a in analyses:
             submitted[a.step] += 1
-            if a.usable and a.pose is not None:
+            if a.pose is not None:
                 poses[a.step].append(a.pose)
         active = self._active.verify(actions, poses, submitted)
 

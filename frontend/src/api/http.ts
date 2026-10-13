@@ -25,7 +25,6 @@ type UnauthorizedHandler = () => void;
 let getToken: TokenProvider = () => null;
 let onUnauthorized: UnauthorizedHandler = () => undefined;
 
-/** Wired by the AuthProvider so that the HTTP layer stays framework-agnostic. */
 export function configureAuth(provider: TokenProvider, unauthorized: UnauthorizedHandler): void {
   getToken = provider;
   onUnauthorized = unauthorized;

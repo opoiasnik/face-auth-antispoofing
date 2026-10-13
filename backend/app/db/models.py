@@ -1,5 +1,3 @@
-"""ORM models."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -44,8 +42,6 @@ class User(Base):
 
 
 class FaceTemplate(Base):
-    """Encrypted face embedding. Raw images are never stored."""
-
     __tablename__ = "face_templates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -59,8 +55,6 @@ class FaceTemplate(Base):
 
 
 class AuthAttempt(Base):
-    """Audit log of every enrollment / authentication attempt."""
-
     __tablename__ = "auth_attempts"
     __table_args__ = (Index("ix_auth_attempts_username_created", "username", "created_at"),)
 

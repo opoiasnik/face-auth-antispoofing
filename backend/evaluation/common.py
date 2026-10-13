@@ -1,5 +1,3 @@
-"""Helpers shared by the evaluation scripts."""
-
 from __future__ import annotations
 
 import csv
@@ -35,7 +33,6 @@ def output_dir(base: Path | None, name: str) -> Path:
 
 
 def iter_media(folder: Path, video_stride: int = 5) -> Iterator[tuple[str, np.ndarray]]:
-    """Yield ``(sample_id, BGR image)`` for every image and every n-th video frame."""
     for path in sorted(p for p in folder.rglob("*") if p.is_file()):
         suffix = path.suffix.lower()
         if suffix in IMAGE_EXTENSIONS:

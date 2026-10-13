@@ -17,7 +17,6 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# models change rarely -> separate cached layer
 COPY scripts ./scripts
 RUN python scripts/download_models.py --dest /app/models
 

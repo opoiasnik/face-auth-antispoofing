@@ -1,81 +1,82 @@
 import { useCallback, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { accountApi, type CaptureBody } from "@/api/endpoints";
 import { useAuth } from "@/auth/context";
 import { describeError } from "@/biometrics/messages";
 import { AttemptsTable } from "@/components/AttemptsTable";
 import { BiometricCapture } from "@/components/BiometricCapture";
-import { Alert, Button, Card, Spinner } from "@/components/ui";
+import { Button, Notice, Section, Spinner } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import { useAsync } from "@/lib/useAsync";
 
 export function DashboardPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const welcome = (location.state as { welcome?: boolean } | null)?.welcome ?? false;
   const loadAttempts = useCallback(() => accountApi.attempts(20), []);
   const attempts = useAsync(loadAttempts);
   const [reenrolling, setReenrolling] = useState(false);
-  const [notice, setNotice] = useState<string | null>(welcome ? "Registrácia prebehla úspešne." : null);
-  const [deleteError, setDeleteError] = useState<unknown>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   if (!user) return null;
 
   const reenroll = async (body: CaptureBody) => {
     await accountApi.reenroll(body);
     setReenrolling(false);
-    setNotice("Biometrický vzor bol aktualizovaný.");
+    setNotice("Vzor tváre bol aktualizovaný.");
     attempts.reload();
   };
 
   const removeAccount = async () => {
-    if (!window.confirm("Naozaj chcete natrvalo odstrániť účet aj biometrický vzor?")) return;
+    if (!window.confirm("Naozaj zmazať účet aj vzor tváre? Túto akciu nemožno vrátiť.")) return;
     try {
       await accountApi.remove();
       signOut();
       navigate("/", { replace: true });
     } catch (err) {
-      setDeleteError(err);
+      setError(err);
     }
   };
 
-  return (
-    <div className="stack">
-      {notice && <Alert tone="success">{notice}</Alert>}
-      <div className="grid-2">
-        <Card title="Môj účet">
-          <dl className="details">
-            <dt>Používateľ</dt>
-            <dd>{user.username}</dd>
-            <dt>Meno</dt>
-            <dd>{user.full_name ?? "–"}</dd>
-            <dt>Rola</dt>
-            <dd>{user.is_admin ? "administrátor" : "používateľ"}</dd>
-            <dt>Registrovaný</dt>
-            <dd>{formatDate(user.created_at)}</dd>
-          </dl>
-          <div className="row">
-            <Button variant="secondary" onClick={() => setReenrolling((v) => !v)}>
-              {reenrolling ? "Zavrieť" : "Aktualizovať vzor tváre"}
-            </Button>
-            <Button variant="danger" onClick={() => void removeAccount()}>
-              Odstrániť účet
-            </Button>
-          </div>
-          {deleteError !== null && <Alert tone="error">{describeError(deleteError)}</Alert>}
-        </Card>
-        {reenrolling && (
-          <Card title="Nový vzor tváre">
-            <BiometricCapture purpose="enroll" submitLabel="Uložiť nový vzor" onCapture={reenroll} />
-          </Card>
-        )}
+  if (reenrolling) {
+    return (
+      <div className="flow">
+        <h1>Aktualizovať tvár</h1>
+        <p className="flow__note">Nový vzor sa uloží, iba ak ide o tú istú osobu.</p>
+        <BiometricCapture purpose="enroll" submitLabel="Začať" onCapture={reenroll} />
+        <Button variant="link" className="flow__switch" onClick={() => setReenrolling(false)}>
+          Zrušiť
+        </Button>
       </div>
-      <Card
-        title="História prihlásení"
+    );
+  }
+
+  return (
+    <div className="page">
+      <header className="page__head">
+        <h1>{user.full_name || user.username}</h1>
+        <p className="muted">
+          @{user.username} · účet od {formatDate(user.created_at).split(" ")[0]}
+        </p>
+      </header>
+
+      {notice && <Notice tone="success">{notice}</Notice>}
+      {error !== null && <Notice tone="error">{describeError(error)}</Notice>}
+
+      <div className="row">
+        <Button variant="secondary" onClick={() => setReenrolling(true)}>
+          Aktualizovať tvár
+        </Button>
+        <Button variant="danger" onClick={() => void removeAccount()}>
+          Zmazať účet
+        </Button>
+      </div>
+
+      <Section
+        title="Posledné prihlásenia"
         actions={
-          <Button variant="ghost" onClick={attempts.reload}>
+          <Button variant="link" onClick={attempts.reload}>
             Obnoviť
           </Button>
         }
@@ -83,11 +84,11 @@ export function DashboardPage() {
         {attempts.loading && !attempts.data ? (
           <Spinner />
         ) : attempts.error ? (
-          <Alert tone="error">{describeError(attempts.error)}</Alert>
+          <Notice tone="error">{describeError(attempts.error)}</Notice>
         ) : (
           <AttemptsTable attempts={attempts.data ?? []} />
         )}
-      </Card>
+      </Section>
     </div>
   );
 }

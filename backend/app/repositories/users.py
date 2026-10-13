@@ -46,7 +46,6 @@ class TemplateRepository:
         return self._session.scalars(stmt).all()
 
     def gallery(self, model_version: str) -> Sequence[FaceTemplate]:
-        """All templates of active users (for 1:N identification)."""
         stmt = (
             select(FaceTemplate)
             .join(User)

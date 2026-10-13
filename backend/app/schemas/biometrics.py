@@ -15,9 +15,13 @@ class ChallengeRequest(BaseModel):
 
 
 class CaptureParameters(BaseModel):
-    frames_per_step: int
-    step_duration_ms: int
-    lead_in_ms: int
+    center_duration_ms: int
+    frame_interval_ms: int
+    action_timeout_ms: int
+    hold_after_detection_ms: int
+    max_frames_per_step: int
+    yaw_threshold: float
+    pitch_threshold: float
 
 
 class ChallengeResponse(BaseModel):
@@ -48,3 +52,5 @@ class QualityCheckResponse(BaseModel):
     face_size: float
     sharpness: float
     brightness: float
+    yaw: float | None = None
+    pitch: float | None = None

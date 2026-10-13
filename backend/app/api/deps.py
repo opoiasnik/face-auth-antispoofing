@@ -1,5 +1,3 @@
-"""FastAPI dependencies."""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
@@ -83,7 +81,6 @@ AuthServiceDep = Annotated[BiometricAuthService, Depends(get_auth_service)]
 
 
 def rate_limit(scope: str, per_minute: int | None = None) -> Callable[..., None]:
-    """Per-client-IP fixed-window limit for the given endpoint scope."""
 
     def dependency(container: ContainerDep, ctx: ClientDep) -> None:
         limit = per_minute or container.settings.security.rate_limit_per_minute

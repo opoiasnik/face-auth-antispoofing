@@ -1,11 +1,3 @@
-"""Administrative command line.
-
-Usage::
-
-    python -m app.cli generate-secrets
-    python -m app.cli promote <username>
-"""
-
 from __future__ import annotations
 
 import argparse

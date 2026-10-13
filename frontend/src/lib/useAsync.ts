@@ -7,7 +7,6 @@ interface AsyncState<T> {
   reload: () => void;
 }
 
-/** Loads data on mount (and on ``reload``); stale responses are ignored. */
 export function useAsync<T>(loader: () => Promise<T>): AsyncState<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<unknown>(null);

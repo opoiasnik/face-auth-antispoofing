@@ -1,5 +1,3 @@
-"""Single-use, short-lived liveness challenges (nonce + random action sequence)."""
-
 from __future__ import annotations
 
 import json
@@ -29,7 +27,7 @@ class Challenge:
     id: str
     purpose: ChallengePurpose
     actions: tuple[ChallengeAction, ...]
-    expires_at: float  # unix timestamp
+    expires_at: float
 
     def to_json(self) -> str:
         return json.dumps(
@@ -55,9 +53,7 @@ class Challenge:
 class ChallengeStore(Protocol):
     def save(self, challenge: Challenge, ttl_seconds: int) -> None: ...
 
-    def pop(self, challenge_id: str) -> Challenge | None:
-        """Atomically fetch and delete (guarantees single use)."""
-        ...
+    def pop(self, challenge_id: str) -> Challenge | None: ...
 
 
 class InMemoryChallengeStore:

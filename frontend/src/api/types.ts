@@ -1,5 +1,3 @@
-// Mirrors the backend schemas (backend/app/schemas).
-
 export type ChallengePurpose = "enroll" | "authenticate";
 export type ChallengeAction = "center" | "turn_left" | "turn_right" | "look_up" | "look_down";
 
@@ -20,9 +18,13 @@ export type RejectionReason =
   | "duplicate_face";
 
 export interface CaptureParameters {
-  frames_per_step: number;
-  step_duration_ms: number;
-  lead_in_ms: number;
+  center_duration_ms: number;
+  frame_interval_ms: number;
+  action_timeout_ms: number;
+  hold_after_detection_ms: number;
+  max_frames_per_step: number;
+  yaw_threshold: number;
+  pitch_threshold: number;
 }
 
 export interface Challenge {
@@ -44,6 +46,8 @@ export interface QualityCheck {
   face_size: number;
   sharpness: number;
   brightness: number;
+  yaw: number | null;
+  pitch: number | null;
 }
 
 export interface User {

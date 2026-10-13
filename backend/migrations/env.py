@@ -1,5 +1,3 @@
-"""Alembic environment: uses the application's settings and metadata."""
-
 from __future__ import annotations
 
 from alembic import context
@@ -33,7 +31,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True,  # required for ALTER TABLE support on SQLite
+            render_as_batch=True,
         )
         with context.begin_transaction():
             context.run_migrations()

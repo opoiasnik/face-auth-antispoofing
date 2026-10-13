@@ -1,12 +1,3 @@
-"""Biometric performance metrics.
-
-Recognition (ISO/IEC 19795-1): FAR / FRR, ROC, DET, EER.
-Presentation attack detection (ISO/IEC 30107-3): APCER, BPCER, ACER.
-
-Convention: a *higher* score means "more likely genuine / bona fide"; a sample
-is accepted when ``score >= threshold``.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -18,8 +9,8 @@ import numpy as np
 @dataclass(frozen=True, slots=True)
 class ErrorRates:
     threshold: float
-    far: float  # impostors / attacks accepted
-    frr: float  # genuine / bona fide rejected
+    far: float
+    frr: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +40,6 @@ def error_rates(
 def roc_curve(
     genuine: Sequence[float], impostor: Sequence[float]
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Return ``(thresholds, far, frr)`` evaluated at every distinct score."""
     g, i = np.sort(_as_array(genuine)), np.sort(_as_array(impostor))
     thresholds = np.unique(np.concatenate([g, i, [np.inf]]))
     far = 1.0 - np.searchsorted(i, thresholds, side="left") / i.size
@@ -58,9 +48,8 @@ def roc_curve(
 
 
 def equal_error_rate(genuine: Sequence[float], impostor: Sequence[float]) -> EerResult:
-    """EER by linear interpolation of the FAR/FRR crossing point."""
     thresholds, far, frr = roc_curve(genuine, impostor)
-    diff = far - frr  # decreasing from >=0 to <=0
+    diff = far - frr
     idx = int(np.argmax(diff <= 0))
     if idx == 0:
         return EerResult(eer=float((far[0] + frr[0]) / 2), threshold=float(thresholds[0]))
@@ -75,7 +64,6 @@ def equal_error_rate(genuine: Sequence[float], impostor: Sequence[float]) -> Eer
 
 
 def threshold_at_far(impostor: Sequence[float], target_far: float) -> float:
-    """Smallest threshold whose FAR does not exceed ``target_far``."""
     i = np.sort(_as_array(impostor))
     allowed = int(np.floor(target_far * i.size))
     if allowed >= i.size:
@@ -86,7 +74,7 @@ def threshold_at_far(impostor: Sequence[float], target_far: float) -> float:
 @dataclass(frozen=True, slots=True)
 class PadReport:
     threshold: float
-    apcer: float  # worst-case over attack types (ISO/IEC 30107-3)
+    apcer: float
     apcer_per_type: dict[str, float]
     bpcer: float
     acer: float
@@ -98,7 +86,6 @@ class PadReport:
 def pad_metrics(
     bona_fide: Sequence[float], attacks: Mapping[str, Sequence[float]], threshold: float
 ) -> PadReport:
-    """APCER per presentation-attack instrument species, BPCER and ACER."""
     if not attacks:
         raise ValueError("At least one attack type is required")
     bpcer = float(np.mean(_as_array(bona_fide) < threshold))
@@ -116,6 +103,5 @@ def pad_metrics(
 def bpcer_at_apcer(
     bona_fide: Sequence[float], attack_scores: Sequence[float], target_apcer: float
 ) -> tuple[float, float]:
-    """BPCER at the operating point where APCER <= target (e.g. BPCER20 → target 0.05)."""
     threshold = threshold_at_far(attack_scores, target_apcer)
     return float(np.mean(_as_array(bona_fide) < threshold)), threshold

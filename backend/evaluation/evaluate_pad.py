@@ -1,22 +1,3 @@
-"""Presentation attack detection (passive anti-spoofing) evaluation – ISO/IEC 30107-3.
-
-Expected dataset layout (images and/or videos)::
-
-    DATA/
-      bona_fide/            live faces
-      attack/
-        print/              printed photos
-        replay/             phone / tablet / monitor replays
-        mask/ ...           any other attack species (sub-folder name = type)
-
-``evaluation.capture_dataset`` records such a dataset with a webcam. Public
-datasets (CelebA-Spoof, Replay-Attack, OULU-NPU) can be arranged the same way.
-
-Usage::
-
-    python -m evaluation.evaluate_pad --dir data/pad
-"""
-
 from __future__ import annotations
 
 import argparse
