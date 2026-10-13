@@ -62,6 +62,7 @@ export function BiometricCapture({ purpose, submitLabel, onCapture, canStart = t
   } else if (progress.phase === "verifying") {
     state = "verifying";
     title = "Overujem…";
+    subtitle = "Môže to trvať až pol minúty";
     ringProgress = 1;
   } else if (error !== null) {
     state = "error";

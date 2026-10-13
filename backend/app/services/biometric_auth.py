@@ -286,10 +286,25 @@ class BiometricAuthService:
             self._audit.record(attempt)
         except Exception:
             logger.exception("Failed to write audit record")
+        steps = (
+            " ".join(
+                f"{s.action.value}:{'ok' if s.passed else 'fail'}"
+                f"(frames={s.usable_frames},peak={s.peak_delta:.3f})"
+                for s in session.active.steps
+            )
+            if session is not None and session.active is not None
+            else "-"
+        )
         logger.info(
-            "biometric %s user=%s success=%s reason=%s",
+            "biometric %s user=%s success=%s reason=%s frames=%d passive=%s steps=[%s] ms=%d",
             draft.mode,
             draft.username,
             failure is None,
             failure,
+            draft.frames,
+            None
+            if session is None or session.passive_score is None
+            else round(session.passive_score, 3),
+            steps,
+            attempt.duration_ms,
         )

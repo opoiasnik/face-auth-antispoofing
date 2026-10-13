@@ -4,6 +4,7 @@ import logging
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TypeVar
 
 import numpy as np
 
@@ -25,6 +26,17 @@ from app.biometrics.types import (
 )
 
 logger = logging.getLogger(__name__)
+
+CONSISTENCY_SAMPLES_PER_STEP = 3
+
+T = TypeVar("T")
+
+
+def _spread(items: Sequence[T], count: int) -> list[T]:
+    if len(items) <= count:
+        return list(items)
+    last = len(items) - 1
+    return [items[round(i * last / (count - 1))] for i in range(count)]
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,14 +96,16 @@ class BiometricEngine:
         except ValueError:
             return None
 
-    def analyze_frame(self, image: np.ndarray, step: int = 0) -> FrameAnalysis:
+    def analyze_frame(
+        self, image: np.ndarray, step: int = 0, *, embed: bool = True
+    ) -> FrameAnalysis:
         faces = self._detector.detect(image)
         report = self._quality.assess(image, faces)
         analysis = FrameAnalysis(step=step, quality=report, face=faces[0] if faces else None)
         if analysis.face is None:
             return analysis
         analysis.pose = self._pose(analysis.face, report)
-        if not analysis.usable:
+        if not analysis.usable or not embed:
             return analysis
         analysis.embedding = self._embedder.embed(image, analysis.face)
         if step == 0:
@@ -101,7 +115,16 @@ class BiometricEngine:
     def evaluate_session(
         self, actions: Sequence[ChallengeAction], frames: Sequence[tuple[int, np.ndarray]]
     ) -> SessionResult:
-        analyses = [self.analyze_frame(image, step) for step, image in frames]
+        analyses = [self.analyze_frame(image, step, embed=step == 0) for step, image in frames]
+        for step in range(1, len(actions)):
+            candidates = [
+                (a, image)
+                for a, (_, image) in zip(analyses, frames, strict=True)
+                if a.step == step and a.usable and a.face is not None
+            ]
+            for a, image in _spread(candidates, CONSISTENCY_SAMPLES_PER_STEP):
+                assert a.face is not None
+                a.embedding = self._embedder.embed(image, a.face)
         usable = [a for a in analyses if a.usable and a.embedding is not None]
         issue_counts = Counter(issue.value for a in analyses for issue in a.quality.issues)
 

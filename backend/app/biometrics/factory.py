@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import cv2
+
 from app.biometrics.detector import FaceDetector, YuNetDetector
 from app.biometrics.embedder import FaceEmbedder, SFaceEmbedder
 from app.biometrics.engine import BiometricEngine, SessionPolicy
@@ -58,7 +60,9 @@ def build_passive_liveness(settings: Settings) -> MiniFASNetEnsemble:
         )
         for m in settings.models.anti_spoof
     ]
-    return MiniFASNetEnsemble(specs, settings.models.onnx_providers)
+    return MiniFASNetEnsemble(
+        specs, settings.models.onnx_providers, threads=settings.models.cpu_threads or 2
+    )
 
 
 def build_engine(
@@ -68,6 +72,8 @@ def build_engine(
     embedder: FaceEmbedder | None = None,
     passive_liveness: PassiveLivenessDetector | None = None,
 ) -> BiometricEngine:
+    if settings.models.cpu_threads:
+        cv2.setNumThreads(settings.models.cpu_threads)
     return BiometricEngine(
         detector=detector or build_detector(settings),
         embedder=embedder or build_embedder(settings),

@@ -55,11 +55,11 @@ def _softmax(logits: np.ndarray) -> np.ndarray:
 
 
 class _OnnxModel:
-    def __init__(self, spec: AntiSpoofModelSpec, providers: Sequence[str]) -> None:
+    def __init__(self, spec: AntiSpoofModelSpec, providers: Sequence[str], threads: int) -> None:
         if not spec.path.is_file():
             raise FileNotFoundError(spec.path)
         options = ort.SessionOptions()
-        options.intra_op_num_threads = 2
+        options.intra_op_num_threads = threads
         self.session = ort.InferenceSession(
             str(spec.path), sess_options=options, providers=list(providers)
         )
@@ -81,12 +81,17 @@ class _OnnxModel:
 
 
 class MiniFASNetEnsemble:
-    def __init__(self, specs: Sequence[AntiSpoofModelSpec], providers: Sequence[str]) -> None:
+    def __init__(
+        self,
+        specs: Sequence[AntiSpoofModelSpec],
+        providers: Sequence[str],
+        threads: int = 2,
+    ) -> None:
         if not specs:
             raise ValueError("At least one anti-spoofing model is required")
         available = set(ort.get_available_providers())
         selected = [p for p in providers if p in available] or ["CPUExecutionProvider"]
-        self._models = [_OnnxModel(spec, selected) for spec in specs]
+        self._models = [_OnnxModel(spec, selected, threads) for spec in specs]
         self._total_weight = sum(m.spec.weight for m in self._models)
         self._lock = threading.Lock()
         logger.info(

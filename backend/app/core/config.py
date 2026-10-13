@@ -31,6 +31,7 @@ class ModelSettings(BaseModel):
         ]
     )
     onnx_providers: list[str] = Field(default_factory=lambda: ["CPUExecutionProvider"])
+    cpu_threads: int = Field(default=0, ge=0, description="0 = library default")
 
 
 class DetectionSettings(BaseModel):

@@ -6,6 +6,7 @@ import { captureFrame } from "@/camera/frames";
 import { QUALITY_MAX_WIDTH } from "@/config";
 
 import { medianPose, movementProgress, type Pose } from "./pose";
+import { pickShots, type Shot } from "./sampling";
 import { sleep } from "./schedule";
 
 export type CapturePhase = "idle" | "challenge" | "capturing" | "verifying";
@@ -20,6 +21,7 @@ export interface CaptureProgress {
 
 const IDLE: CaptureProgress = { phase: "idle", actions: [], step: 0, stepProgress: 0, stepDone: false };
 const STEP_PAUSE_MS = 300;
+const LOOK_BACK_INTERVALS = 2;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
@@ -49,7 +51,7 @@ export function useLivenessCapture(videoRef: RefObject<HTMLVideoElement | null>)
       const cap = challenge.capture;
       const action = challenge.actions[step]!;
       const isCenter = action === "center";
-      const frames: Frame[] = [];
+      const shots: Shot<Frame>[] = [];
       const start = performance.now();
       let detectedAt: number | null = null;
       let pending = false;
@@ -57,6 +59,7 @@ export function useLivenessCapture(videoRef: RefObject<HTMLVideoElement | null>)
       const readPose = () => {
         if (pending) return;
         pending = true;
+        const sentAt = performance.now();
         biometricsApi
           .checkQuality(grab(QUALITY_MAX_WIDTH, 0.7), signal)
           .then((result) => {
@@ -70,7 +73,7 @@ export function useLivenessCapture(videoRef: RefObject<HTMLVideoElement | null>)
             const moved = movementProgress(action, pose, baseline, cap);
             setProgress((p) => ({ ...p, stepProgress: Math.max(p.stepProgress, clamp01(moved)) }));
             if (moved >= 1 && detectedAt === null) {
-              detectedAt = performance.now();
+              detectedAt = sentAt;
               setProgress((p) => ({ ...p, stepDone: true }));
             }
           })
@@ -91,12 +94,11 @@ export function useLivenessCapture(videoRef: RefObject<HTMLVideoElement | null>)
           if (elapsed >= cap.action_timeout_ms) break;
           if (!baseline) setProgress((p) => ({ ...p, stepProgress: elapsed / cap.action_timeout_ms }));
         }
-        frames.push({ step, image: grab() });
-        if (frames.length > cap.max_frames_per_step) frames.shift();
+        shots.push({ item: { step, image: grab() }, at: performance.now() });
         readPose();
         await sleep(cap.frame_interval_ms, signal);
       }
-      return frames;
+      return pickShots(shots, detectedAt, cap.max_frames_per_step, cap.frame_interval_ms * LOOK_BACK_INTERVALS);
     },
     [grab],
   );
