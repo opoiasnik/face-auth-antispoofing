@@ -7,7 +7,7 @@ import { describeError } from "@/biometrics/messages";
 import { AttemptsTable } from "@/components/AttemptsTable";
 import { BiometricCapture } from "@/components/BiometricCapture";
 import { Button, Notice, Section, Spinner } from "@/components/ui";
-import { formatDate } from "@/lib/format";
+import { formatDay } from "@/lib/format";
 import { useAsync } from "@/lib/useAsync";
 
 export function DashboardPage() {
@@ -57,7 +57,7 @@ export function DashboardPage() {
       <header className="page__head">
         <h1>{user.full_name || user.username}</h1>
         <p className="muted">
-          @{user.username} · účet od {formatDate(user.created_at).split(" ")[0]}
+          @{user.username} · účet od {formatDay(user.created_at)}
         </p>
       </header>
 

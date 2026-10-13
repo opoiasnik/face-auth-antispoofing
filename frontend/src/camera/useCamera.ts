@@ -26,36 +26,50 @@ function describeError(error: unknown): string {
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const attemptRef = useRef(0);
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const stop = useCallback(() => {
+  const release = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    setStatus("idle");
   }, []);
+
+  const stop = useCallback(() => {
+    attemptRef.current += 1;
+    release();
+    setStatus("idle");
+  }, [release]);
 
   const start = useCallback(async () => {
     if (streamRef.current) return;
+    const attempt = ++attemptRef.current;
     setStatus("starting");
     setError(null);
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("unsupported");
       const stream = await navigator.mediaDevices.getUserMedia(CONSTRAINTS);
+      if (attempt !== attemptRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
       const video = videoRef.current;
       if (video) {
         video.srcObject = stream;
-        await video.play();
+        await video.play().catch((err: unknown) => {
+          if (!(err instanceof DOMException && err.name === "AbortError")) throw err;
+        });
       }
-      setStatus("ready");
+      if (attempt === attemptRef.current) setStatus("ready");
     } catch (err) {
-      stop();
+      if (attempt !== attemptRef.current) return;
+      release();
       setError(describeError(err));
       setStatus("error");
     }
-  }, [stop]);
+  }, [release]);
 
   useEffect(() => stop, [stop]);
 

@@ -266,3 +266,12 @@ def test_quality_endpoint(client: TestClient) -> None:
     body = client.post("/api/v1/biometrics/quality", json={"image": turned}).json()
     assert body["ok"] is True
     assert body["yaw"] > 0.3
+
+
+def test_rejected_liveness_is_visible_in_owner_history(client: TestClient) -> None:
+    token = enroll(client, "alice", identity=1)["access_token"]
+    assert _verify(client, "alice", identity=1, live=False).status_code == 401
+    history = client.get(
+        "/api/v1/users/me/attempts", headers={"Authorization": f"Bearer {token}"}
+    ).json()
+    assert history[0]["failure_reason"] == "passive_spoof"

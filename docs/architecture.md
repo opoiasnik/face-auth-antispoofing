@@ -39,9 +39,10 @@ flowchart TD
 Pre celú reláciu (`BiometricEngine.evaluate_session`):
 
 1. **Kvalita** – ak neexistuje použiteľná frontálna snímka, výsledok `quality`.
-2. **Pasívna živosť** – priemer skóre živosti všetkých použiteľných snímok musí byť
-   ≥ `passive_liveness.threshold` (0,70) a žiadna snímka nesmie klesnúť pod
-   `min_frame_score` (0,30) → inak `passive_spoof`.
+2. **Pasívna živosť** – priemer skóre živosti frontálnych snímok (krok `center`) musí byť
+   ≥ `passive_liveness.threshold` (0,50) a žiadna z nich nesmie klesnúť pod
+   `min_frame_score` (0,20) → inak `passive_spoof`. Prah 0,50 bol zvolený podľa merania
+   na CASIA-FASD (pozri `evaluation.md`).
 3. **Aktívna výzva** – každý krok musí obsahovať požadovaný pohyb hlavy → inak
    `active_challenge_failed`.
 4. **Konzistencia identity** – minimálna podobnosť každej snímky so vzorom relácie
@@ -67,8 +68,12 @@ center → 2 náhodné, navzájom rôzne akcie z {turn_left, turn_right, look_up
 ```
 
 (12 permutácií, nastaviteľné). Výzva má jednorazový identifikátor (192 bitov), platí
-90 s a po prvom použití sa atomicky zmaže (`GETDEL` v Redise). Klient v každom kroku
-zachytí 5 snímok po úvodnej pauze 700 ms.
+90 s a po prvom použití sa atomicky zmaže (`GETDEL` v Redise).
+
+Klient sníma kontinuálne (každých 220 ms). Krok `center` trvá 1,6 s. Počas pohybových
+krokov posiela klient zároveň zmenšené náhľady na `/biometrics/quality`, ktorý vracia
+aj polohu hlavy; keď pohyb prekročí prah, krok sa po 0,6 s ukončí (najneskôr po 5 s).
+Z každého kroku sa odošle najviac 10 posledných snímok. Rozhoduje vždy server.
 
 Póza hlavy sa odhaduje geometricky z 5 bodov detektora YuNet (oči, nos, kútiky úst):
 
@@ -78,7 +83,8 @@ Póza hlavy sa odhaduje geometricky z 5 bodov detektora YuNet (oči, nos, kútik
 
 Krok `center` určí **osobnú neutrálnu pózu** (medián), ostatné kroky sa hodnotia ako
 zmena voči nej. Krok je splnený, ak aspoň 2 snímky prekročia prah (yaw 0,20; pitch 0,07)
-v správnom smere a aspoň 80 % snímok obsahuje použiteľnú tvár.
+v správnom smere a aspoň 50 % snímok kroku obsahuje detegovanú tvár. Póza sa počíta
+aj zo snímok, ktoré nesplnia kontrolu kvality (napr. rozmazanie pohybom).
 
 ## 3. Sekvencia overenia
 
@@ -89,15 +95,16 @@ sequenceDiagram
     participant S as Server (FastAPI)
     participant DB as Databáza
     C->>S: POST /biometrics/quality (náhľad, 1×/1,2 s)
-    S-->>C: issues[] (navádzanie)
+    S-->>C: issues[], yaw, pitch (navádzanie)
     U->>C: Prihlásiť sa
     C->>S: POST /challenges {purpose: authenticate}
     S-->>C: challenge_id, actions[center, turn_left, look_up]
     loop každý krok
-        C->>U: pokyn + ukazovateľ priebehu
-        C->>C: 5 snímok z videa (JPEG, 640 px)
+        C->>U: pokyn + kruhový ukazovateľ priebehu
+        C->>C: snímky z videa (JPEG, 640 px) každých 220 ms
+        C->>S: náhľad → poloha hlavy (kým nie je pohyb rozpoznaný)
     end
-    C->>S: POST /auth/verify {username, challenge_id, frames[15]}
+    C->>S: POST /auth/verify {username, challenge_id, frames[≤27]}
     S->>S: spotrebuj výzvu (jednorazovo)
     S->>S: kvalita → PAD → výzva → konzistencia
     S->>DB: načítaj a dešifruj vzory používateľa

@@ -126,12 +126,12 @@ class BiometricAuthService:
     ) -> AuthOutcome:
         with self._attempt("verify", ctx, username) as draft:
             self._check_lockout(username)
+            user = self._users.get_by_username(username)
+            draft.user_id = user.id if user is not None else None
             session = self._run_session(ChallengePurpose.AUTHENTICATE, submission, draft)
             assert session.template is not None
-            user = self._users.get_by_username(username)
             if user is None or not user.is_active:
                 raise self._rejection(RejectionReason.NO_MATCH, session)
-            draft.user_id = user.id
             score = self._match_user(user, session.template, draft)
             return AuthOutcome(user=user, session=session, match_score=score)
 

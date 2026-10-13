@@ -1,8 +1,17 @@
 const dateFormat = new Intl.DateTimeFormat("sk-SK", { dateStyle: "short", timeStyle: "medium" });
 
+const dayFormat = new Intl.DateTimeFormat("sk-SK", { day: "numeric", month: "long", year: "numeric" });
+
+function parseUtc(iso: string): Date {
+  return new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`);
+}
+
 export function formatDate(iso: string): string {
-  const normalized = /[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`;
-  return dateFormat.format(new Date(normalized));
+  return dateFormat.format(parseUtc(iso));
+}
+
+export function formatDay(iso: string): string {
+  return dayFormat.format(parseUtc(iso));
 }
 
 export function formatScore(value: number | null | undefined, digits = 3): string {

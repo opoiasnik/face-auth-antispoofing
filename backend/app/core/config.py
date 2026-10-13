@@ -53,7 +53,7 @@ class QualitySettings(BaseModel):
 
 
 class PassiveLivenessSettings(BaseModel):
-    threshold: float = Field(default=0.70, ge=0.0, le=1.0)
+    threshold: float = Field(default=0.50, ge=0.0, le=1.0)
     min_frame_score: float = Field(
         default=0.20,
         ge=0.0,
