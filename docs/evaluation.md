@@ -8,7 +8,7 @@ systému s reálnymi používateľmi a útokmi. Všetky skripty ukladajú výsle
 ## 1. Automatické testy
 
 ```bash
-cd backend && pytest --cov=app        # 47 testov, pokrytie ~87 %
+cd backend && pytest --cov=app        # 49 testov, pokrytie ~87 %
 cd frontend && npm test               # jednotkové testy klienta
 ```
 
@@ -42,6 +42,15 @@ Metriky:
 * **EER** – bod, kde FAR = FRR (lineárna interpolácia),
 * **FTA** (*Failure to Acquire*) – podiel obrázkov bez detegovanej tváre.
 
+Výsledok (LFW, 6000 párov, FTA 0 %):
+
+| Pracovný bod | Prah | FAR | FRR |
+|---|---|---|---|
+| EER | 0,266 | 2,47 % | 2,47 % |
+| Systémový prah | 0,400 | 0,00 % | 3,90 % |
+| FAR ≤ 1 % | 0,294 | 1,00 % | 2,63 % |
+| FAR ≤ 0,1 % | 0,339 | 0,10 % | 3,03 % |
+
 ## 3. Detekcia prezentačných útokov (ISO/IEC 30107-3)
 
 Dataset sa nahrá webkamerou (rôzne vzdialenosti, svetlo, uhly; ideálne viac osôb):
@@ -68,6 +77,19 @@ Metriky:
 Výstupy: `table.md`, `score_distribution`, `apcer_bpcer`, `det` (krivka pre každý typ
 útoku), `apcer_per_type`.
 
+Výsledok na testovacej časti CASIA-FASD (2408 snímok: 591 živých, 712 ohnutá
+fotografia, 536 fotografia s vystrihnutými očami, 569 replay):
+
+| Prah | BPCER | APCER (max) |
+|---|---|---|
+| 0,20 | 5,58 % | 5,97 % |
+| 0,50 (systémový) | 18,10 % | 1,68 % |
+| 0,70 (pôvodný) | 34,35 % | 0,93 % |
+
+EER 5,25 %, BPCER20 5,58 %. Pôvodný prah 0,70 zamietal príliš veľa živých tvárí,
+preto bol znížený na 0,50. Snímky v tejto verzii databázy sú orezané okolo tváre,
+takže výsledok je skôr pesimistický.
+
 ## 4. Aktívna výzva a celý systém
 
 Aktívnu výzvu nemožno vyhodnotiť na statických datasetoch – testuje sa end-to-end
@@ -91,25 +113,29 @@ python -m evaluation.audit_report --since 2026-11-01
 
 vytvorí tabuľku úspešnosti podľa režimu, priemerný a P95 čas a graf dôvodov zamietnutia.
 
+Útok statickým obrázkom (umelo vygenerovaná tvár): 6/6 pokusov cez virtuálnu kameru
+v prehliadači zamietla aktívna výzva (pasívne skóre 0,98), 30/30 pokusov priamo cez API
+zamietla pasívna detekcia (priemerné skóre relácie 0,25).
+
 ## 5. Výkon
 
 ```bash
 python -m evaluation.benchmark --image cesta/k/tvari.jpg --runs 200
 ```
 
-Referenčné meranie (notebook, CPU, obrázok 512×512 px, ONNX Runtime CPU, 30 behov):
+Referenčné meranie (Intel Core i7-13650HX, ONNX Runtime CPU, snímka 640×360 px, 200 behov):
 
 | Fáza | Priemer [ms] |
 |---|---|
-| Detekcia (YuNet) | 5,0 |
-| Kvalita vzorky | 0,1 |
+| Detekcia (YuNet) | 4,76 |
+| Kvalita vzorky | 0,10 |
 | Odhad pózy hlavy | 0,01 |
-| Pasívna živosť (2× MiniFASNet) | 2,4 |
-| Extrakcia príznakov (SFace) | 3,5 |
-| Celý snímok | 13,3 |
+| Pasívna živosť (2× MiniFASNet) | 2,59 |
+| Extrakcia príznakov (SFace) | 3,98 |
+| Celý snímok | 12,23 |
 
-Relácia s 15 snímkami sa na serveri spracuje približne za 0,2 s; celkovú dobu
-prihlásenia (~7 s) určuje hlavne čas potrebný na vykonanie pohybov.
+Relácia s najviac 27 snímkami sa na serveri spracuje približne za 0,3 s; celkovú dobu
+prihlásenia (~5–7 s) určuje hlavne čas potrebný na vykonanie pohybov.
 
 ## 6. Ladenie prahov
 
