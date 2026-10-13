@@ -1,9 +1,14 @@
 \documentclass[12pt,a4paper,oneside]{report}
 
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+  \usepackage{lmodern}
+\else
+  \usepackage{fontspec}
+\fi
 \usepackage[slovak]{babel}
-\usepackage{lmodern}
 \usepackage[a4paper,left=3cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
 \usepackage{setspace}
 \onehalfspacing
@@ -18,11 +23,12 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,shapes.geometric,calc}
+\usetikzlibrary{arrows.meta,positioning,fit,shapes.geometric,calc,babel}
 \usepackage{csquotes}
 \usepackage[hidelinks]{hyperref}
 
 \graphicspath{{figures/}}
+\setlength{\emergencystretch}{3em}
 
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO:} #1\textbf{]}}}
 \newcommand{\optfigure}[3]{%
@@ -321,15 +327,15 @@ odhadne pravdepodobnosť, že ide o~živú tvár.
   \centering
   \begin{tikzpicture}[
       node distance=5mm,
-      step/.style={draw, rounded corners, align=center, font=\small,
+      stage/.style={draw, rounded corners, align=center, font=\small,
                    minimum width=24mm, minimum height=8mm},
       arr/.style={-{Stealth[length=2mm]}, thick}]
-    \node[step] (in) {Snímka};
-    \node[step, right=of in] (det) {Detekcia\\YuNet};
-    \node[step, above right=2mm and 8mm of det] (pose) {Poloha hlavy};
-    \node[step, below right=2mm and 8mm of det] (q) {Kvalita\\vzorky};
-    \node[step, right=8mm of q, yshift=6mm] (emb) {SFace\\(príznaky)};
-    \node[step, right=8mm of q, yshift=-9mm] (pad) {MiniFASNet\\(len frontálne)};
+    \node[stage] (in) {Snímka};
+    \node[stage, right=of in] (det) {Detekcia\\YuNet};
+    \node[stage, above right=2mm and 8mm of det] (pose) {Poloha hlavy};
+    \node[stage, below right=2mm and 8mm of det] (q) {Kvalita\\vzorky};
+    \node[stage, above right=1mm and 8mm of q] (emb) {SFace\\(príznaky)};
+    \node[stage, below right=1mm and 8mm of q] (pad) {MiniFASNet\\(len frontálne)};
     \draw[arr] (in) -- (det);
     \draw[arr] (det) -- (pose.west);
     \draw[arr] (det) -- (q.west);
@@ -475,7 +481,7 @@ jeho vlastníka, takže používateľ vidí, ak sa niekto pokúšal prihlásiť 
 \end{table}
 
 Všetky neurónové siete sú predtrénované a voľne dostupné. Sťahuje ich skript
-\texttt{scripts/download\_models.py}, ktorý zároveň uloží kontrolné súčty SHA-256.
+\path{scripts/download_models.py}, ktorý zároveň uloží kontrolné súčty SHA-256.
 Spolu majú približne 42~MB a bežia na CPU.
 
 \section{Štruktúra projektu}
@@ -597,8 +603,8 @@ dočasné zablokovanie účtu.
   \item \textbf{Produkčný režim} -- aplikácia odmietne štartovať bez nastavených
         tajomstiev; v~odpovediach sa nevracajú skóre, aby útočník nemohol vstup
         postupne ladiť podľa nich; vypnutá je dokumentácia API.
-  \item \textbf{Klient} -- prísna politika CSP, zákaz vkladania do rámcov, token v~úložisku
-        \texttt{sessionStorage} (zanikne zatvorením karty).
+  \item \textbf{Klient} -- prísna politika CSP, zákaz vkladania do rámcov, token
+        v~úložisku \texttt{sessionStorage} (zanikne zatvorením karty).
   \item \textbf{GDPR} -- používateľ môže vymazať účet aj vzor; pri registrácii je
         informovaný o~spracovaní biometrického údaja.
 \end{itemize}
@@ -639,7 +645,7 @@ zamietol, pretože obraz sa počas výzvy nepohol.
 
 \begin{figure}[H]
   \centering
-  \optfigure{ui_login_ready.png}{0.8\textwidth}{prihlásenie, tvár v poriadku}
+  \optfigure{ui_login_ready.png}{0.5\textwidth}{prihlásenie, tvár v poriadku}
   \caption{Prihlásenie -- tvár je v~kruhu a spĺňa požiadavky na kvalitu}
   \label{fig:ui-login}
 \end{figure}
@@ -649,7 +655,7 @@ zamietol, pretože obraz sa počas výzvy nepohol.
   \begin{subfigure}{0.49\textwidth}
     \centering
     \optfigure{ui_login_challenge.png}{\linewidth}{priebeh výzvy}
-    \caption{Krok výzvy \enquote{Pozrite sa hore}}
+    \caption{Krok výzvy \enquote{Otočte hlavu doprava}}
     \label{fig:ui-challenge}
   \end{subfigure}
   \hfill
