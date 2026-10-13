@@ -15,30 +15,19 @@ Celá správa je **v jednom súbore `main.tex`** – vrátane zoznamu literatúr
 
 ## Čo treba doplniť
 
-Všetky miesta sú v PDF označené červeným **[TODO: …]**.
+Miesta sú v PDF označené červeným **[TODO: …]**:
 
-| Časť | Kto |
-|---|---|
-| Úvod, Analýza problematiky (teória, max. 3 strany), Záver, Abstrakt | **autori sami – AI je pri teórii zakázaná** |
-| Tabuľky výsledkov (LFW, PAD, end-to-end) | čísla zo skriptov `backend/evaluation` |
-| Interpretácie výsledkov, snímky obrazovky | autori |
+* meno spolužiaka na titulnej strane,
+* tabuľka testu so živými používateľmi (kap. 5.5) – vyžaduje skutočné pokusy pred
+  kamerou; výsledky vypíše `python -m evaluation.audit_report`.
 
-## Grafy
-
-Skopírujte PDF grafy z `backend/reports/` do `figures/` s týmito názvami:
-
-| Zdroj | Cieľový súbor |
-|---|---|
-| `recognition-*/score_distribution.pdf` | `figures/score_distribution.pdf` |
-| `recognition-*/det.pdf` | `figures/det.pdf` |
-| `pad-*/score_distribution.pdf` | `figures/pad_score_distribution.pdf` |
-| `pad-*/det.pdf` | `figures/pad_det.pdf` |
-| `audit-*/rejection_reasons.pdf` | `figures/rejection_reasons.pdf` |
-
-Kým graf chýba, v PDF je namiesto neho červený rámik.
+Ostatné výsledky (LFW, CASIA-FASD, útok statickým obrázkom, výkon) sú namerané
+a grafy aj snímky obrazovky sú v priečinku `figures/`. V Overleaf nahrajte celý
+priečinok `figures/` vedľa `main.tex`.
 
 ## Zdroje
 
 Zoznam literatúry obsahuje 15 odborných zdrojov z rokov 2022–2025 overených cez DOI
-(Crossref) alebo oficiálne stránky (ISO, ENISA, EUR-Lex), plus model SFace (2021)
-a softvérové zdroje, ktoré sa do limitu 10 zdrojov nezapočítavajú.
+(Crossref) alebo oficiálne stránky (ISO, ENISA, EUR-Lex). Navyše sú uvedené model
+SFace (2021), použité databázy LFW (2007) a CASIA-FASD (2012) a softvérové zdroje –
+tie sa do limitu 10 zdrojov nie starších ako 5 rokov nezapočítavajú.

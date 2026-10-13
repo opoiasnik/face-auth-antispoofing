@@ -67,9 +67,19 @@
 
 \chapter*{Abstrakt}
 \addcontentsline{toc}{chapter}{Abstrakt}
-\todo{Abstrakt (cca 150 slov) napíšte sami po dokončení práce: cieľ, použité metódy,
-hlavné výsledky – EER rozpoznávania, ACER detekcie útokov, úspešnosť end-to-end testu.}
 
+Práca sa zaoberá prihlasovaním pomocou tváre a ochranou takého prihlasovania pred
+podvrhmi, ako sú fotografie alebo videá prehrávané na displeji. Navrhli a implementovali
+sme webový systém, ktorý tvár sníma bežnou webkamerou a o~výsledku rozhoduje na serveri.
+Ochrana je viacvrstvová: kontrola kvality snímky, pasívna detekcia podvrhu dvojicou
+neurónových sietí MiniFASNet, náhodná výzva na pohyb hlavy a kontrola, že sa osoba počas
+snímania nezmenila. Tvár sa porovnáva modelom SFace. Na databáze LFW dosiahlo
+rozpoznávanie EER 2,47~\% a pri použitom prahu nulové FAR pri FRR 3,90~\%. Pasívna
+detekcia mala na snímkach z~databázy CASIA-FASD EER 5,25~\% a pri zvolenom prahu
+APCER najviac 1,68~\%. Všetkých 30 pokusov o~prihlásenie statickým obrázkom tváre bolo
+zamietnutých. Spracovanie jednej relácie trvá na bežnom procesore približne 0,3~s.
+
+\vspace{1em}
 \noindent\textbf{Kľúčové slová:} biometria, rozpoznávanie tváre, detekcia prezentačných
 útokov, anti-spoofing, živosť, ISO/IEC~30107-3
 
@@ -112,66 +122,127 @@ a používaniu a na záver zhrnieme dosiahnuté výsledky a možné rozšírenia
 \chapter{Analýza problematiky}
 \label{ch:teoria}
 
-\todo{Celú kapitolu napíšte sami (max.\ 3 strany). Pri každej podkapitole sú uvedené
-zdroje zo zoznamu literatúry.}
+\section{Ako funguje rozpoznávanie tváre}
 
-\section{Biometrický systém rozpoznávania tváre}
-\todo{Princíp: detekcia tváre, zarovnanie, extrakcia príznakov, porovnanie, rozhodnutie;
-verifikácia (1:1) vs.\ identifikácia (1:N); hlbokové príznaky s uhlovou rezervou.
-Zdroje: \cite{wu2023yunet, deng2022arcface, kim2022adaface, zhong2021sface}.}
+Rozpoznávanie tváre prebieha v~niekoľkých krokoch. Najprv treba tvár v~obraze nájsť.
+Detektor vráti jej polohu a niekoľko orientačných bodov -- typicky stredy očí, špičku
+nosa a kútiky úst. Moderné detektory sú pritom veľmi malé; YuNet má menej ako sto tisíc
+parametrov a na bežnom procesore zvládne detekciu za niekoľko milisekúnd
+\cite{wu2023yunet}. Podľa orientačných bodov sa tvár zarovná do jednotnej polohy
+a veľkosti, aby porovnanie neovplyvnilo, či je hlava mierne naklonená alebo ďalej od
+kamery.
+
+Zarovnaný výrez tváre spracuje konvolučná neurónová sieť a vytvorí z~neho vektor
+príznakov, akýsi číselný \enquote{odtlačok} tváre. Dobrý vektor má dve vlastnosti:
+dve fotky toho istého človeka dávajú podobné vektory aj pri inom svetle či výraze
+a fotky rôznych ľudí dávajú vektory, ktoré sú od seba ďaleko. Podobnosť sa najčastejšie
+meria kosínusom uhla medzi vektormi a o~zhode rozhodne prah. Systém pritom môže pracovať
+v~dvoch režimoch. Pri \emph{verifikácii} (1:1) používateľ tvrdí, kto je, a systém to iba
+potvrdí porovnaním s~jedným uloženým vzorom. Pri \emph{identifikácii} (1:N) systém
+hľadá najpodobnejší vzor v~celej databáze, takže s~rastúcim počtom používateľov rastie
+aj riziko zámeny.
+
+To, ako dobre vektory oddeľujú ľudí, určuje hlavne spôsob trénovania siete. Metóda
+ArcFace pri trénovaní pridáva medzi triedy (osoby) uhlovú rezervu, takže sieť sa musí
+naučiť vektory jednej osoby zhlukovať tesnejšie, než by bolo inak potrebné
+\cite{deng2022arcface}. AdaFace túto rezervu mení podľa kvality obrázka -- pri
+rozmazaných alebo tmavých snímkach je miernejšia, aby sa sieť neučila z~nekvalitných
+dát zlé vzory \cite{kim2022adaface}. SFace, ktorý používame v~našom systéme, rieši
+podobný problém tak, že silu, ktorou sa vektory priťahujú a odpudzujú, obmedzuje
+sigmoidnou funkciou \cite{zhong2021sface}.
 
 \section{Kvalita biometrickej vzorky}
-\todo{Prečo kvalita ovplyvňuje FRR; čo meria norma ISO/IEC 29794-5.
-Zdroje: \cite{iso29794-5, schlett2022fiqa}.}
 
-\section{Prezentačné útoky a ich detekcia}
-\todo{Definícia prezentačného útoku a PAI (tlač, replay, maska); pasívne vs.\ aktívne
-metódy detekcie živosti; problém generalizácie na nové typy útokov;
-injekčné útoky ako hranica PAD.
-Zdroje: \cite{yu2023fassurvey, hernandezortega2023pad, sun2023rethinking,
-srivatsan2023flip, wang2023wildfas, enisa2022remote}.}
+Aj najlepší model zlyhá, ak dostane zlú snímku. Rozmazaná, tmavá, príliš malá alebo
+silno otočená tvár zvyšuje počet odmietnutých oprávnených používateľov a niekedy sa
+tvár nepodarí ani nájsť. Kvalitu sa preto oplatí kontrolovať ešte pred porovnaním
+a používateľovi povedať, čo má zlepšiť. Prehľad metód hodnotenia kvality
+\cite{schlett2022fiqa} chápe kvalitu ako užitočnosť snímky pre rozpoznávanie, nie ako
+jej estetiku -- pekná, ale z~profilu odfotená tvár je pre systém horšia ako obyčajná
+frontálna fotka z~webkamery. Norma ISO/IEC 29794-5 z~roku 2025 stanovuje, ako merať
+jednotlivé vlastnosti fotografie tváre, napríklad ostrosť, osvetlenie, polohu hlavy či
+otvorené oči, a rozlišuje použitie pri fotografiách do dokladov, pri registrácii a pri
+bežnom overovaní \cite{iso29794-5}.
+
+\section{Prezentačné útoky}
+
+Pri prezentačnom útoku útočník ukáže snímaču podvrh, aby ho systém považoval za inú
+osobu, alebo aby skryl vlastnú identitu. Prostriedok útoku sa označuje ako PAI
+(\emph{presentation attack instrument}). Najjednoduchší je vytlačená fotografia,
+prípadne ohnutá alebo s~vystrihnutými očami, aby pôsobila živšie. Častý je aj
+\emph{replay} útok, pri ktorom útočník ukáže fotografiu alebo video na displeji mobilu
+či tabletu. Náročnejšie sú papierové, silikónové alebo 3D tlačené masky
+\cite{hernandezortega2023pad}. Pri hodnotení systému sa každý druh útoku sleduje
+zvlášť, pretože proti každému pomáhajú iné vlastnosti obrazu.
+
+Od prezentačných útokov treba odlíšiť injekčné útoky. Pri nich útočník kameru úplne
+obíde a pošle do systému podvrhnutý obraz priamo, napríklad cez virtuálnu kameru alebo
+upravenú aplikáciu. Takýto obraz nemusí mať žiadne fyzické stopy podvrhu, preto ho
+detekcia prezentačných útokov sama nezachytí. Agentúra ENISA ich preto uvádza ako
+samostatnú kategóriu hrozieb a odporúča ich riešiť ďalšími opatreniami, napríklad
+overením integrity zariadenia \cite{enisa2022remote}.
+
+\section{Detekcia prezentačných útokov}
+
+Metódy detekcie sa delia na pasívne a aktívne. Pasívne metódy analyzujú samotný obraz
+a hľadajú stopy podvrhu. Starší prístup využíval ručne navrhnuté príznaky textúry,
+dnes sa takmer výhradne používajú hlboké neurónové siete, ktoré sa tieto stopy naučia
+z~dát -- napríklad textúru papiera, moaré vzniknuté snímaním displeja, odlesky alebo
+okraje fotografie \cite{yu2023fassurvey}. Ich výhodou je, že používateľ nemusí nič
+robiť. Nevýhodou je, že model vie dobre rozpoznať iba to, čo videl pri trénovaní.
+
+Práve generalizácia je hlavným otvoreným problémom. Model natrénovaný na jednom datasete
+často zlyhá pri inej kamere, inom osvetlení alebo novom type útoku. Výskum sa preto
+zameriava na metódy, ktoré lepšie oddelia živé tváre od podvrhov aj v~nových podmienkach
+\cite{sun2023rethinking}, alebo využívajú veľké predtrénované modely spájajúce obraz
+a text \cite{srivatsan2023flip}. Súťaže na rozsiahlych dátach z~reálneho sveta zároveň
+ukazujú, že výsledky z~laboratórnych datasetov sa do praxe prenášajú len čiastočne
+\cite{wang2023wildfas}.
+
+Aktívne metódy naopak žiadajú od používateľa spoluprácu -- má žmurknúť, usmiať sa alebo
+otočiť hlavu určeným smerom (tzv.\ \emph{challenge--response}). Statická fotografia
+takúto akciu nevykoná a ak je poradie akcií náhodné, nepomôže ani vopred nahrané video.
+Cenou je o~niečo dlhšie a menej pohodlné prihlásenie. V~praxi sa preto oba prístupy
+často kombinujú, čo je aj prístup nášho systému.
 
 \section{Metriky a normy hodnotenia}
-\todo{FAR/FRR/EER pre rozpoznávanie; APCER, BPCER, ACER podľa ISO/IEC 30107-3;
-stručne prehľad noriem. Zdroje: \cite{iso30107-3, busch2023standards}.}
+
+Presnosť rozpoznávania opisujú dve chyby: FAR (podiel prijatých cudzích osôb) a FRR
+(podiel odmietnutých oprávnených používateľov). Obe závisia od prahu -- prísnejší prah
+znižuje FAR, ale zvyšuje FRR. Systémy sa preto porovnávajú pomocou EER, teda hodnoty,
+pri ktorej sú obe chyby rovnaké, alebo pomocou krivky DET, ktorá ukazuje celý kompromis
+naraz. Pre bezpečnostné aplikácie sa často uvádza aj FRR pri pevnom, veľmi nízkom FAR.
+
+Pre detekciu prezentačných útokov definuje metriky norma ISO/IEC 30107-3
+\cite{iso30107-3}. APCER je podiel útokov, ktoré systém nesprávne prijal ako živú tvár,
+a počíta sa zvlášť pre každý druh útoku; rozhodujúci je najhorší z~nich. BPCER je podiel
+skutočných používateľov, ktorých systém nesprávne označil za útok. V~literatúre sa
+často uvádza aj ACER, priemer APCER a BPCER, no norma takéto priemerovanie neodporúča,
+pretože skrýva, či systém zlyháva v~bezpečnosti alebo v~pohodlí \cite{busch2023standards}.
+Vhodnejšie je uvádzať BPCER pri pevnej hodnote APCER, napríklad BPCER20 pri APCER 5~\%.
 
 \section{Ochrana biometrických údajov}
-\todo{Biometrické údaje ako osobitná kategória osobných údajov, ochrana šablón,
-regulácia biometrických systémov v EÚ. Zdroje: \cite{abdullahi2024template, euaiact2024}.}
+
+Biometrické údaje, ktoré slúžia na jednoznačnú identifikáciu osoby, patria podľa GDPR
+medzi osobitné kategórie osobných údajov a ich spracovanie vyžaduje výslovný súhlas.
+Na rozdiel od hesla sa tvár po úniku nedá zmeniť, preto treba chrániť aj uložené vzory.
+Od ochrany sa očakáva, že z~uloženého vzoru nepôjde zrekonštruovať pôvodnú tvár, že
+vzory z~rôznych systémov sa nebudú dať prepojiť a že kompromitovaný vzor pôjde nahradiť
+novým. Používajú sa na to napríklad zrušiteľná biometria, biometrické kryptosystémy
+alebo homomorfné šifrovanie \cite{abdullahi2024template}. Od roku 2024 platí v~EÚ aj
+akt o~umelej inteligencii, ktorý systémy diaľkovej biometrickej identifikácie zaraďuje
+medzi vysokorizikové. Výnimkou je biometrická verifikácia, ktorej jediným účelom je
+potvrdiť, že osoba je tá, za ktorú sa vydáva \cite{euaiact2024}.
 
 \chapter{Návrh riešenia}
 \label{ch:navrh}
 
 Cieľom praktickej časti bolo vytvoriť funkčný webový systém, ktorý používateľa
 autentifikuje iba pomocou tváre snímanej bežnou webkamerou a ktorý zároveň odolá
-najčastejším prezentačným útokom -- fotografii, displeju s fotografiou alebo videom
-a pokusu o zámenu osoby počas snímania. Kapitola opisuje požiadavky, architektúru,
-biometrický reťazec a bezpečnostný návrh. Implementačné detaily nasledujú
-v kapitole~\ref{ch:implementacia}.
-
-\section{Požiadavky na systém}
-
-\subsection*{Funkčné požiadavky}
-\begin{enumerate}[label=F\arabic*]
-  \item Registrácia používateľa (\emph{enrolment}) – vytvorenie účtu a biometrického
-        vzoru tváre po úspešnom overení živosti.
-  \item Verifikácia 1:1 – používateľ zadá meno a systém porovná tvár iba s jeho vzorom.
-  \item Identifikácia 1:N – prihlásenie bez mena, vyhľadanie v galérii všetkých vzorov.
-  \item Detekcia prezentačných útokov pri každom snímaní (registrácia aj prihlásenie).
-  \item Navádzanie používateľa počas snímania (poloha tváre, svetlo, pokyny k pohybu).
-  \item Správa účtu – história pokusov, aktualizácia vzoru, výmaz účtu.
-  \item Administrácia – štatistiky, audit pokusov, blokovanie a odstránenie účtov.
-\end{enumerate}
-
-\subsection*{Nefunkčné požiadavky}
-\begin{enumerate}[label=N\arabic*]
-  \item Všetky biometrické rozhodnutia vykonáva server; klient (prehliadač) nie je
-        dôveryhodný, pretože jeho kód môže útočník ľubovoľne upraviť.
-  \item Fotografie sa neukladajú, uchováva sa iba šifrovaný vektor príznakov.
-  \item Spracovanie jednej relácie na bežnom CPU do 1~s (bez GPU).
-  \item Konfigurovateľné prahy rozhodovania bez zásahu do kódu.
-  \item Reprodukovateľnosť – automatizované testy, kontajnerizácia, verejný repozitár.
-\end{enumerate}
+najčastejším prezentačným útokom -- fotografii, displeju s~fotografiou alebo videom
+a pokusu o~zámenu osoby počas snímania. Kapitola opisuje architektúru, biometrický
+reťazec a bezpečnostný návrh. Implementačné detaily nasledujú
+v~kapitole~\ref{ch:implementacia}.
 
 \section{Architektúra}
 
@@ -179,9 +250,10 @@ Systém má klient-server architektúru (obr.~\ref{fig:architektura}). Klient je
 jednostránková aplikácia (SPA) v~jazyku TypeScript s~knižnicou React, ktorá ovláda
 webkameru cez rozhranie \texttt{getUserMedia}, zobrazuje pokyny a odosiela snímky na
 server. Server je napísaný v~jazyku Python s~rámcom FastAPI a obsahuje celý
-biometrický reťazec. Trvalé dáta sú v~relačnej databáze (SQLite pri vývoji,
-PostgreSQL v~produkcii), krátkodobý stav (jednorazové výzvy, počítadlá pokusov)
-v~pamäti procesu alebo v~Redise.
+biometrický reťazec. Všetky rozhodnutia o~živosti a zhode robí server -- kód
+v~prehliadači môže útočník ľubovoľne upraviť, preto mu nemožno dôverovať. Trvalé dáta
+sú v~relačnej databáze (SQLite pri vývoji, PostgreSQL v~produkcii), krátkodobý stav
+(jednorazové výzvy, počítadlá pokusov) v~pamäti procesu alebo v~Redise.
 
 \begin{figure}[H]
   \centering
@@ -214,11 +286,10 @@ v~pamäti procesu alebo v~Redise.
   \label{fig:architektura}
 \end{figure}
 
-Serverová časť je rozdelená do vrstiev podľa princípov čistej architektúry
-(tab.~\ref{tab:vrstvy}). Biometrické komponenty sú definované cez rozhrania
-(\emph{protocols}) – detektor, extraktor príznakov a pasívny detektor živosti možno
-vymeniť bez zmeny zvyšku systému a v~testoch ich nahradiť deterministickými náhradami.
-Všetky objekty sa skladajú na jednom mieste (\emph{composition root}).
+Serverová časť je rozdelená do vrstiev (tab.~\ref{tab:vrstvy}). Biometrické komponenty
+sú definované cez rozhrania -- detektor, extraktor príznakov a pasívny detektor živosti
+možno vymeniť bez zmeny zvyšku systému a v~testoch ich nahradiť deterministickými
+náhradami. Všetky objekty sa skladajú na jednom mieste aplikácie.
 
 \begin{table}[H]
   \centering
@@ -240,9 +311,11 @@ Všetky objekty sa skladajú na jednom mieste (\emph{composition root}).
 
 Každá snímka prechádza rovnakým spracovaním (obr.~\ref{fig:retazec}). Najprv detektor
 YuNet \cite{wu2023yunet} nájde tváre a päť orientačných bodov (stredy očí, špička nosa,
-kútiky úst). Ak snímka spĺňa požiadavky na kvalitu, vypočíta sa z~orientačných bodov
-poloha hlavy, dvojica modelov MiniFASNet odhadne pravdepodobnosť živej tváre a model
-SFace \cite{zhong2021sface} vytvorí 128-rozmerný vektor príznakov.
+kútiky úst). Z~orientačných bodov sa hneď vypočíta poloha hlavy -- aj vtedy, keď snímka
+nesplní požiadavky na kvalitu, pretože počas otáčania hlavy je obraz často mierne
+rozmazaný. Ak snímka kvalitu spĺňa, model SFace \cite{zhong2021sface} z~nej vytvorí
+128-rozmerný vektor príznakov a pri frontálnych snímkach dvojica modelov MiniFASNet
+odhadne pravdepodobnosť, že ide o~živú tvár.
 
 \begin{figure}[H]
   \centering
@@ -253,15 +326,15 @@ SFace \cite{zhong2021sface} vytvorí 128-rozmerný vektor príznakov.
       arr/.style={-{Stealth[length=2mm]}, thick}]
     \node[step] (in) {Snímka};
     \node[step, right=of in] (det) {Detekcia\\YuNet};
-    \node[step, right=of det] (q) {Kvalita\\vzorky};
-    \node[step, above right=2mm and 8mm of q] (pose) {Póza hlavy};
-    \node[step, right=8mm of q] (pad) {MiniFASNet\\(živosť)};
-    \node[step, below right=2mm and 8mm of q] (emb) {SFace\\(príznaky)};
+    \node[step, above right=2mm and 8mm of det] (pose) {Poloha hlavy};
+    \node[step, below right=2mm and 8mm of det] (q) {Kvalita\\vzorky};
+    \node[step, right=8mm of q, yshift=6mm] (emb) {SFace\\(príznaky)};
+    \node[step, right=8mm of q, yshift=-9mm] (pad) {MiniFASNet\\(len frontálne)};
     \draw[arr] (in) -- (det);
-    \draw[arr] (det) -- (q);
-    \draw[arr] (q) -- (pose.west);
-    \draw[arr] (q) -- (pad);
+    \draw[arr] (det) -- (pose.west);
+    \draw[arr] (det) -- (q.west);
     \draw[arr] (q) -- (emb.west);
+    \draw[arr] (q) -- (pad.west);
   \end{tikzpicture}
   \caption{Spracovanie jednej snímky}
   \label{fig:retazec}
@@ -275,8 +348,8 @@ dôvodom:
 \begin{enumerate}
   \item \textbf{Kvalita} -- relácia musí obsahovať aspoň jednu použiteľnú frontálnu snímku
         (dôvod \texttt{quality}).
-  \item \textbf{Pasívna detekcia} -- priemerné skóre živosti použiteľných snímok musí byť
-        aspoň $\tau_{\mathrm{PAD}} = 0{,}70$ a žiadna snímka nesmie klesnúť pod $0{,}30$
+  \item \textbf{Pasívna detekcia} -- priemerné skóre živosti frontálnych snímok musí byť
+        aspoň $\tau_{\mathrm{PAD}} = 0{,}50$ a žiadna z~nich nesmie klesnúť pod $0{,}20$
         (dôvod \texttt{passive\_spoof}).
   \item \textbf{Aktívna výzva} -- v~každom kroku výzvy musí byť zaznamenaný požadovaný
         pohyb hlavy (dôvod \texttt{active\_challenge\_failed}).
@@ -287,6 +360,9 @@ dôvodom:
         $s \geq \tau_{\mathrm{match}} = 0{,}40$ (dôvod \texttt{no\_match}).
 \end{enumerate}
 
+Pasívna detekcia sa počíta iba na frontálnych snímkach, pretože modely MiniFASNet boli
+trénované na tvárach otočených do kamery a pri otočenej hlave dávajú zbytočne nízke
+skóre. Prah $0{,}50$ sme zvolili na základe merania v~kapitole~\ref{ch:testovanie}.
 Vzor relácie je normalizovaný priemer vektorov príznakov frontálnych snímok:
 \begin{equation}
   \mathbf{t} = \frac{\sum_{i} \hat{\mathbf{e}}_i}{\left\lVert \sum_{i} \hat{\mathbf{e}}_i \right\rVert},
@@ -295,14 +371,15 @@ Vzor relácie je normalizovaný priemer vektorov príznakov frontálnych snímok
 \end{equation}
 kde $\hat{\mathbf{e}}_i$ sú L2-normalizované vektory príznakov a $\hat{\mathbf{r}}$ je
 normalizovaný referenčný vzor. Prah $0{,}40$ je mierne prísnejší ako hodnota $0{,}363$,
-ktorú pre model SFace odporúča knižnica OpenCV \cite{opencvzoo}.
+ktorú pre model SFace odporúča knižnica OpenCV \cite{opencvzoo}; meranie na LFW ukázalo,
+že pri ňom nevznikla ani jedna falošná zhoda.
 
 \section{Návrh aktívnej výzvy}
 
-Pasívna detekcia sa učí z~dát a jej úspešnosť na nových typoch útokov a nových
-podmienkach (iná kamera, iné osvetlenie) nie je zaručená \cite{sun2023rethinking}.
-Preto ju dopĺňa aktívna výzva typu \emph{challenge--response}. Server pri každom pokuse
-vygeneruje kryptograficky bezpečným generátorom postupnosť
+Pasívna detekcia sa učí z~dát a jej úspešnosť v~nových podmienkach (iná kamera, iné
+osvetlenie) nie je zaručená \cite{sun2023rethinking}. Preto ju dopĺňa aktívna výzva typu
+\emph{challenge--response}. Server pri každom pokuse vygeneruje kryptograficky bezpečným
+generátorom postupnosť
 \[
   \texttt{center} \rightarrow a_1 \rightarrow a_2,\qquad
   a_1 \neq a_2 \in \{\texttt{turn\_left}, \texttt{turn\_right}, \texttt{look\_up}, \texttt{look\_down}\},
@@ -325,9 +402,18 @@ hore sa nos priblíži k~línii očí a pitch klesá.
 
 Krok \texttt{center} určí osobnú neutrálnu polohu $(\overline{\mathrm{yaw}},
 \overline{\mathrm{pitch}})$ ako medián. Ostatné kroky sa hodnotia ako zmena oproti nej
--- tým sa odstráni vplyv individuálnej stavby tváre a sklonu kamery. Krok je splnený,
-ak aspoň dve snímky prekročia prah ($0{,}20$ pre yaw, $0{,}07$ pre pitch) v~správnom
-smere a aspoň 80~\% snímok kroku obsahuje použiteľnú tvár.
+-- tým sa odstráni vplyv individuálnej stavby tváre aj toho, že kamera nie je presne
+pred používateľom. Krok je splnený, ak aspoň dve snímky prekročia prah ($0{,}20$ pre
+yaw, $0{,}07$ pre pitch) v~správnom smere a aspoň polovica snímok kroku obsahuje
+detegovanú tvár.
+
+Prvá verzia klienta snímala každý krok pevne stanovený čas. Ak používateľ začal pohyb
+neskôr, v~odoslaných snímkach ho nemuselo byť dosť a krok zlyhal, hoci ho používateľ
+vykonal. Výzvu sme preto prerobili na adaptívnu: klient počas kroku posiela serveru aj
+malé náhľadové snímky, server vráti aktuálnu polohu hlavy a keď pohyb prekročí prah,
+klient krok o~0,6~s neskôr ukončí (najneskôr po 5~s). Toto meranie slúži iba na
+navádzanie používateľa -- konečné rozhodnutie urobí server znova zo všetkých odoslaných
+snímok, takže upravený klient nemôže výzvu obísť.
 
 \section{Bezpečnostný návrh}
 
@@ -361,6 +447,8 @@ ENISA o~vzdialenom overovaní totožnosti \cite{enisa2022remote}.
 Ochrana uložených vzorov je navrhnutá s~ohľadom na to, že biometrický údaj nemožno
 po úniku zmeniť ako heslo \cite{abdullahi2024template}. Systém preto neukladá
 fotografie, vzor šifruje a umožňuje používateľovi kedykoľvek vymazať účet aj vzor.
+Každý pokus o~prihlásenie do účtu -- aj zamietnutý pre podvrh -- sa zobrazí v~histórii
+jeho vlastníka, takže používateľ vidí, ak sa niekto pokúšal prihlásiť namiesto neho.
 
 \chapter{Implementácia}
 \label{ch:implementacia}
@@ -418,17 +506,19 @@ a ďalej sa pracuje s~najväčšou. Keďže objekt OpenCV si pamätá veľkosť 
 k~nemu chráni zámok, aby boli súbežné požiadavky bezpečné.
 
 Kontrola kvality (trieda \texttt{QualityAssessor}) je inšpirovaná normou ISO/IEC
-29794-5 \cite{iso29794-5} a prehľadom \cite{schlett2022fiqa}, ale je zjednodušená na
-rýchle, interpretovateľné kritériá:
+29794-5 \cite{iso29794-5}, ale je zjednodušená na rýchle a ľahko vysvetliteľné kritériá:
 \begin{itemize}
   \item v~zábere nesmie byť ďalšia tvár väčšia ako 15~\% plochy hlavnej tváre,
-  \item kratšia strana tváre aspoň 90~px,
-  \item ostrosť – rozptyl Laplaciánu na výreze tváre zmenšenom na $128\times128$~px aspoň 25,
-  \item priemerný jas výrezu v~intervale $\langle 50, 215\rangle$.
+  \item kratšia strana tváre aspoň 80~px,
+  \item ostrosť -- rozptyl Laplaciánu na výreze tváre zmenšenom na $128\times128$~px aspoň 12,
+  \item priemerný jas výrezu v~intervale $\langle 40, 225\rangle$.
 \end{itemize}
 Výsledkom je zoznam problémov (napr. \texttt{too\_dark}), ktoré klient zobrazí ako
-konkrétnu radu. Rovnaká kontrola beží aj ako samostatný endpoint
-\texttt{/biometrics/quality}, ktorý klient volá každých 1,2~s počas nastavovania tváre.
+krátku radu (\enquote{Je príliš tma}). Rovnaká kontrola beží aj ako samostatný endpoint
+\texttt{/biometrics/quality}, ktorý klient volá počas nastavovania tváre a ktorý vracia
+aj aktuálnu polohu hlavy. Prvá verzia mala hranice prísnejšie (90~px, ostrosť 25, jas
+od 50). Bežné notebookové kamery však pri horšom osvetlení dávajú tmavší a menej ostrý
+obraz, preto sme hranice zmiernili.
 
 \section{Pasívna detekcia živosti}
 
@@ -449,7 +539,7 @@ logits = session.run(None, {input_name: tensor})[0]
 p_live = softmax(logits)[0, LIVE_CLASS_INDEX]
 \end{lstlisting}
 
-\section{Aktívna výzva}
+\section{Aktívna výzva a snímanie}
 
 Výzvy vydáva a overuje trieda \texttt{ChallengeService}. Výzva sa uloží pod náhodným
 identifikátorom (\texttt{secrets.token\_urlsafe(24)}) s~dobou platnosti 90~s. Pri
@@ -457,21 +547,23 @@ overení sa výzva z~úložiska odstráni atomickou operáciou (v~Redise \texttt
 takže tú istú výzvu nemožno použiť dvakrát. Overuje sa aj účel výzvy -- výzva vydaná na
 prihlásenie nemôže byť použitá na registráciu.
 
-Klient každý krok výzvy zobrazí ako pokyn so šípkou a ukazovateľom priebehu. Po
-úvodnej pauze 700~ms zachytí päť rovnomerne rozložených snímok počas 2,2~s. Snímky sa
-z~videa kopírujú cez \texttt{canvas} bez zrkadlenia, zmenšia na šírku 640~px a odošlú ako
-JPEG v~kódovaní base64. Náhľad v~prehliadači je zrkadlený, aby pokyn \enquote{doľava}
-zodpovedal smeru, ktorý používateľ vidí.
+Na strane klienta snímanie riadi hook \texttt{useLivenessCapture}. Každých 220~ms
+skopíruje aktuálny snímok z~videa cez \texttt{canvas} (bez zrkadlenia, zmenšený na šírku
+640~px, JPEG). Krok \texttt{center} trvá 1,6~s. V~pohybových krokoch zároveň posiela
+náhľady na \texttt{/biometrics/quality} a zo vrátenej polohy hlavy počíta, koľko
+z~požadovaného pohybu už používateľ urobil. Tento podiel sa zobrazuje ako vyplnenie
+kruhového ukazovateľa okolo náhľadu kamery. Keď pohyb dosiahne prah, krok sa o~0,6~s
+neskôr ukončí, inak najneskôr po 5~s. Z~každého kroku sa odošle najviac 10 posledných
+snímok, celá relácia má teda najviac 27 snímok.
 
-Vyhodnotenie výzvy na serveri (trieda \texttt{ActiveLivenessVerifier}) vypočíta pre
-každú snímku polohu hlavy podľa vzťahov z~kapitoly~\ref{ch:navrh} a pohyb oproti
-neutrálnej polohe v~smere požadovanej akcie. Výsledok každého kroku (splnený,
-počet použiteľných snímok, maximálny pohyb) sa vracia v~odpovedi, čo zjednodušuje
-ladenie prahov.
+Na serveri vyhodnotenie výzvy (trieda \texttt{ActiveLivenessVerifier}) vypočíta pre
+každú snímku polohu hlavy a pohyb oproti neutrálnej polohe v~smere požadovanej akcie.
+Ak niektorý krok neuspeje, odpoveď obsahuje názov tohto kroku a klient používateľovi
+presne povie, ktorý pohyb nerozpoznal (\enquote{Nerozpoznali sme otočenie hlavy doprava}).
 
 \section{Registrácia, overenie a identifikácia}
 
-Prípady použitia implementuje trieda \texttt{BiometricAuthService}. Všetky tri majú
+Prípady použitia implementuje trieda \texttt{BiometricAuthService}. Všetky majú
 rovnaký priebeh: spotrebovanie výzvy, kontrola, že snímky pokrývajú všetky kroky,
 dekódovanie obrázkov s~limitom veľkosti, vyhodnotenie relácie a nakoniec akcia
 podľa prípadu použitia:
@@ -479,7 +571,7 @@ podľa prípadu použitia:
   \item \textbf{registrácia} -- kontrola obsadenosti mena, vyhľadanie tváre v~galérii
         (odmietnutie duplicitnej registrácie), uloženie používateľa a šifrovaného vzoru;
   \item \textbf{verifikácia 1:1} -- kontrola dočasného zablokovania, porovnanie
-        s~vzormi používateľa; neexistujúci používateľ vráti rovnakú chybu ako nezhoda;
+        so vzormi používateľa; neexistujúci používateľ dostane rovnakú chybu ako nezhoda;
   \item \textbf{identifikácia 1:N} -- porovnanie so všetkými vzormi aktívnych
         používateľov a výber najlepšej zhody nad prahom;
   \item \textbf{aktualizácia vzoru} -- nový vzor sa uloží, iba ak sa zhoduje
@@ -498,14 +590,13 @@ dočasné zablokovanie účtu.
   \item \textbf{Šifrovanie vzorov} -- vektor 128 hodnôt typu \texttt{float32} sa šifruje
         schémou Fernet. Kľúč je v~premenných prostredia, nie v~databáze. Vzor je
         viazaný na verziu modelu, po výmene modelu sa starý vzor nepoužije.
-  \item \textbf{Prístupové tokeny} -- JWT podpísané HMAC-SHA256 s~platnosťou 30~min,
-        povinné položky \texttt{sub}, \texttt{exp}, \texttt{iat}, \texttt{typ}.
+  \item \textbf{Prístupové tokeny} -- JWT podpísané HMAC-SHA256 s~platnosťou 30~min.
   \item \textbf{Ochrana proti zneužitiu} -- limit požiadaviek na IP adresu, limit veľkosti
-        požiadavky (20~MB), snímky (2~MB) a počtu snímok (40); obrázky sa zmenšia na
+        požiadavky (20~MB), snímky (2~MB) a počtu snímok (50); obrázky sa zmenšia na
         najviac 1280~px.
   \item \textbf{Produkčný režim} -- aplikácia odmietne štartovať bez nastavených
         tajomstiev; v~odpovediach sa nevracajú skóre, aby útočník nemohol vstup
-        iteratívne optimalizovať; vypnutá je dokumentácia API.
+        postupne ladiť podľa nich; vypnutá je dokumentácia API.
   \item \textbf{Klient} -- prísna politika CSP, zákaz vkladania do rámcov, token v~úložisku
         \texttt{sessionStorage} (zanikne zatvorením karty).
   \item \textbf{GDPR} -- používateľ môže vymazať účet aj vzor; pri registrácii je
@@ -514,22 +605,89 @@ dočasné zablokovanie účtu.
 
 \section{Klientska aplikácia}
 
-Klient má päť obrazoviek: úvod, registrácia, prihlásenie (prepínač 1:1 / 1:N),
-používateľský účet a administrácia. Jadrom je komponent \texttt{BiometricCapture},
-ktorý spája tri časti:
-\begin{itemize}
-  \item \texttt{useCamera} -- spustenie a ukončenie kamery, zrozumiteľné chybové
-        hlásenia (zamietnutý prístup, chýbajúca kamera, nezabezpečené pripojenie);
-  \item \texttt{useQualityMonitor} -- periodická kontrola kvality a farebné označenie
-        oválu (zelený = pripravené);
-  \item \texttt{useLivenessCapture} -- získanie výzvy, časovanie krokov, zachytenie snímok
-        a odoslanie; podporuje zrušenie.
-\end{itemize}
-Chyby zo servera sa podľa kódu a dôvodu zamietnutia prekladajú na slovenské hlásenia
-s~radami, ako postupovať.
+Pri návrhu rozhrania sme sa inšpirovali existujúcimi aplikáciami na prihlásenie tvárou,
+napríklad nastavením Face ID v~systéme iOS: veľký kruhový náhľad kamery, okolo neho
+prstenec z~čiarok, ktorý sa postupne vypĺňa, a pod ním jedna krátka veta s~pokynom.
+Rozhranie je zámerne jednoduché -- bez vysvetľujúcich odsekov, s~jedným hlavným
+tlačidlom na obrazovke. Ak je tvár v~kruhu v~poriadku, prstenec sa zafarbí nazeleno
+(obr.~\ref{fig:ui-login}). Počas pohybového kroku sa vo vnútri kruhu zobrazí šípka
+v~smere pohybu (obr.~\ref{fig:ui-challenge}) a po neúspechu sa prstenec zafarbí
+načerveno a pod ním je dôvod zamietnutia (obr.~\ref{fig:ui-rejected}). Náhľad je
+zrkadlený, aby pokyn \enquote{doľava} zodpovedal smeru, ktorý používateľ vidí.
 
-\todo{Sem vložte 2--3 snímky obrazovky (registrácia s~pokynom, úspešné prihlásenie,
-zamietnutý útok fotografiou) do priečinka \texttt{figures/} a odkomentujte obrázok nižšie.}
+Snímky obrazoviek v~tejto kapitole boli vytvorené s~virtuálnou kamerou, ktorej obraz
+tvorila verejne dostupná, umelo vygenerovaná fotografia tváre (StyleGAN, voľné dielo).
+Ide teda zároveň o~ukážku útoku statickým obrázkom -- systém ho podľa očakávania
+zamietol, pretože obraz sa počas výzvy nepohol.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{ui_home.png}{\linewidth}{úvodná stránka}
+    \caption{Úvodná stránka}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{ui_enroll_form.png}{\linewidth}{registrácia}
+    \caption{Registrácia -- prvý krok}
+  \end{subfigure}
+  \caption{Úvodná stránka a registrácia}
+  \label{fig:ui-home}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \optfigure{ui_login_ready.png}{0.8\textwidth}{prihlásenie, tvár v poriadku}
+  \caption{Prihlásenie -- tvár je v~kruhu a spĺňa požiadavky na kvalitu}
+  \label{fig:ui-login}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{ui_login_challenge.png}{\linewidth}{priebeh výzvy}
+    \caption{Krok výzvy \enquote{Pozrite sa hore}}
+    \label{fig:ui-challenge}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{ui_login_rejected.png}{\linewidth}{zamietnutie}
+    \caption{Zamietnutie statického obrázka}
+    \label{fig:ui-rejected}
+  \end{subfigure}
+  \caption{Aktívna výzva počas prihlásenia}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{ui_dashboard.png}{\linewidth}{účet}
+    \caption{Účet s~históriou pokusov}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \optfigure{ui_admin.png}{\linewidth}{správa}
+    \caption{Správa systému}
+  \end{subfigure}
+  \caption{Používateľský účet a administrácia}
+  \label{fig:ui-account}
+\end{figure}
+
+Technicky sa klient skladá z~troch častí. Hook \texttt{useCamera} spúšťa a zastavuje
+webkameru a prekladá chyby prehliadača na zrozumiteľné hlásenia. Pri testovaní sme
+v~ňom našli súbeh: ak sa kamera spustila dvakrát rýchlo po sebe (napríklad pri rýchlom
+prechode medzi stránkami), druhé spustenie prerušilo prvé a aplikácia nesprávne
+hlásila, že kamera nie je dostupná. Oprava každé spustenie očísluje a výsledky
+neaktuálnych spustení zahodí. Hook \texttt{useQualityMonitor} pred začiatkom snímania
+pravidelne kontroluje kvalitu a \texttt{useLivenessCapture} riadi samotnú výzvu.
+Chyby zo servera sa podľa kódu a dôvodu zamietnutia prekladajú na krátke slovenské
+hlásenia.
 
 \section{Nasadenie}
 
@@ -549,11 +707,12 @@ tak komunikuje iba s~jednou doménou.
 \chapter{Testovanie a vyhodnotenie}
 \label{ch:testovanie}
 
-Systém bol overený na troch úrovniach: (1)~automatické testy softvéru, (2)~meranie
-presnosti jednotlivých biometrických modulov podľa noriem a (3)~end-to-end test celého
-systému s~reálnymi používateľmi a útokmi. Výkon bol meraný samostatne. Všetky
-vyhodnocovacie skripty sú v~priečinku \texttt{backend/evaluation} a výsledky ukladajú
-ako tabuľky (JSON, CSV, Markdown) a grafy (PNG, PDF).
+Systém sme overili na štyroch úrovniach: (1)~automatické testy softvéru, (2)~meranie
+presnosti rozpoznávania na verejnej databáze LFW, (3)~meranie pasívnej detekcie útokov
+na verejnej databáze CASIA-FASD a (4)~testy celého systému cez jeho rozhranie. Výkon
+sme merali samostatne. Všetky vyhodnocovacie skripty sú v~priečinku
+\texttt{backend/evaluation} a výsledky ukladajú ako tabuľky (JSON, CSV, Markdown)
+a grafy (PNG, PDF).
 
 \section{Metriky}
 
@@ -566,29 +725,28 @@ osoby):
   \mathrm{FRR}(\tau) = \frac{|\{s \in G : s < \tau\}|}{|G|}.
 \end{equation}
 Miera rovnakej chyby (EER) je hodnota v~bode $\mathrm{FAR}(\tau) = \mathrm{FRR}(\tau)$;
-počíta sa lineárnou interpoláciou medzi susednými prahmi. Ďalej sa uvádza FRR pri
+počíta sa lineárnou interpoláciou medzi susednými prahmi. Ďalej uvádzame FRR pri
 pevnom FAR (1~\% a 0,1~\%) a podiel snímok bez detegovanej tváre (FTA).
 
 \subsection*{Detekcia prezentačných útokov}
-Podľa ISO/IEC 30107-3 \cite{iso30107-3, busch2023standards} sa pre každý druh útoku
-(\emph{PAI species}) $k$ počíta
+Podľa ISO/IEC 30107-3 \cite{iso30107-3} sa pre každý druh útoku $k$ počíta
 \begin{equation}
-  \mathrm{APCER}_k = \frac{\text{počet útokov typu } k \text{ prijatých ako živá tvár}}{\text{počet útokov typu } k},
+  \mathrm{APCER}_k = \frac{\text{útoky typu } k \text{ prijaté ako živá tvár}}{\text{všetky útoky typu } k},
   \qquad
-  \mathrm{BPCER} = \frac{\text{počet živých tvárí odmietnutých}}{\text{počet živých tvárí}},
+  \mathrm{BPCER} = \frac{\text{odmietnuté živé tváre}}{\text{všetky živé tváre}},
 \end{equation}
-pričom celkové $\mathrm{APCER} = \max_k \mathrm{APCER}_k$ (najhorší prípad) a
-$\mathrm{ACER} = (\mathrm{APCER} + \mathrm{BPCER})/2$. Uvádza sa aj BPCER20 a BPCER100,
-teda BPCER pri prahu, pri ktorom $\mathrm{APCER} \le 5~\%$ resp. $1~\%$.
+pričom celkové $\mathrm{APCER} = \max_k \mathrm{APCER}_k$. Uvádzame aj BPCER20
+a BPCER100, teda BPCER pri prahu, pri ktorom $\mathrm{APCER} \le 5~\%$ resp. $1~\%$,
+a pre porovnanie s~literatúrou aj ACER.
 
 \section{Automatické testy}
 
-Serverová časť má 47 testov (pytest) s~pokrytím kódu 87~\%. Testy nahrádzajú neurónové
+Serverová časť má 49 testov (pytest) s~pokrytím kódu 87~\%. Testy nahrádzajú neurónové
 siete deterministickými náhradami: syntetická snímka nesie v~jednom pixeli identitu,
 polohu hlavy a príznak živosti. Vďaka tomu sa celý tok overuje cez skutočné HTTP
-rozhranie bez modelov a bez GPU. Klient má jednotkové testy v~nástroji Vitest. Testy,
-statická analýza (Ruff, mypy, ESLint) a zostavenie Docker obrazov bežia automaticky
-pri každej zmene v~GitHub Actions.
+rozhranie bez modelov a bez GPU. Klient má 7 jednotkových testov v~nástroji Vitest.
+Testy, statická analýza (Ruff, mypy, ESLint) a zostavenie Docker obrazov bežia
+automaticky pri každej zmene v~GitHub Actions.
 
 \begin{table}[H]
   \centering
@@ -599,39 +757,37 @@ pri každej zmene v~GitHub Actions.
     \toprule
     Oblasť & Overované správanie \\
     \midrule
-    Póza hlavy & znamienko yaw a pitch, nezávislosť od náklonu hlavy, degenerované body \\
+    Poloha hlavy & znamienko yaw a pitch, nezávislosť od náklonu hlavy, degenerované body, výpočet polohy aj z~rozmazanej snímky \\
     Aktívna výzva & správny a nesprávny smer, nedostatočný pohyb, málo snímok s~tvárou, náhodnosť poradia \\
     Metriky & FAR/FRR, EER (aj analyticky pre dve normálne rozdelenia), APCER/BPCER/ACER \\
     Bezpečnosť & podpis a platnosť JWT, šifrovanie vzorov, produkčná konfigurácia, rate-limit \\
     Výzvy & jednorazovosť, expirácia, kontrola účelu \\
-    End-to-end API & registrácia a overenie, impostor, neznámy používateľ, útok fotografiou (pasívny aj aktívny), zámena osoby počas relácie, opakované použitie výzvy, chýbajúci krok, duplicitná tvár, identifikácia 1:N, zablokovanie účtu, výmaz účtu, práva administrátora \\
+    End-to-end API & registrácia a overenie, impostor, neznámy používateľ, útok fotografiou (pasívny aj aktívny), zámena osoby počas relácie, opakované použitie výzvy, chýbajúci krok, duplicitná tvár, identifikácia 1:N, zablokovanie účtu, výmaz účtu, práva administrátora, história zamietnutých pokusov \\
+    Klient & výpočet pohybu hlavy, medián neutrálnej polohy, preklad chybových hlásení \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
 \section{Presnosť rozpoznávania tváre}
 
-\textbf{Postup.} Model SFace bol vyhodnotený na databáze Labeled Faces in the Wild
-podľa protokolu \emph{pairs} (6000 dvojíc: 3000 genuine, 3000 impostor) príkazom
-\texttt{python -m evaluation.evaluate\_recognition --lfw}. Kontrola kvality bola pri
-tomto meraní vypnutá, aby sa meral samotný model rozpoznávania.
-
-\todo{Spustite skript a doplňte hodnoty z~\texttt{backend/reports/recognition-*/table.md};
-grafy \texttt{far\_frr.pdf}, \texttt{det.pdf}, \texttt{score\_distribution.pdf} skopírujte
-do \texttt{report/figures/}.}
+Model SFace sme vyhodnotili na databáze Labeled Faces in the Wild \cite{huang2007lfw}
+podľa protokolu \emph{pairs} -- 6000 dvojíc fotografií, z~toho 3000 dvojíc tej istej
+osoby a 3000 dvojíc rôznych osôb. Kontrolu kvality sme pri tomto meraní vypli, aby sme
+merali samotný model rozpoznávania. Tvár sa našla na všetkých 12\,000 fotografiách
+(FTA 0~\%). Výsledky sú v~tabuľke~\ref{tab:lfw} a na obr.~\ref{fig:lfw}.
 
 \begin{table}[H]
   \centering
-  \caption{Výsledky rozpoznávania tváre na LFW}
+  \caption{Výsledky rozpoznávania tváre na LFW (6000 dvojíc)}
   \label{tab:lfw}
   \begin{tabular}{@{}lccc@{}}
     \toprule
     Pracovný bod & Prah & FAR [\%] & FRR [\%] \\
     \midrule
-    EER & \todo{} & \todo{} & \todo{} \\
-    Systémový prah & 0,40 & \todo{} & \todo{} \\
-    FAR $\le$ 1~\% & \todo{} & \todo{} & \todo{} \\
-    FAR $\le$ 0,1~\% & \todo{} & \todo{} & \todo{} \\
+    EER & 0,266 & 2,47 & 2,47 \\
+    Systémový prah & 0,400 & 0,00 & 3,90 \\
+    FAR $\le$ 1~\% & 0,294 & 1,00 & 2,63 \\
+    FAR $\le$ 0,1~\% & 0,339 & 0,10 & 3,03 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -653,49 +809,84 @@ do \texttt{report/figures/}.}
   \label{fig:lfw}
 \end{figure}
 
-\todo{Interpretácia (vlastnými slovami): ako ďaleko sú rozdelenia genuine a impostor,
-čo znamená systémový prah pre bezpečnosť a pohodlie, porovnanie s~hodnotou EER.}
+Rozdelenia skóre dvojíc tej istej osoby a rôznych osôb sa prekrývajú len málo. Pri
+použitom prahu 0,40 nevznikla v~3000 porovnaniach rôznych osôb ani jedna falošná zhoda,
+cenou je odmietnutie 3,9~\% dvojíc tej istej osoby. Databáza LFW obsahuje fotografie
+z~rôznych rokov, s~rôznou pózou a osvetlením, čo je náročnejšia situácia ako
+prihlasovanie pred vlastnou webkamerou. Pri prihlasovaní sa navyše vzor relácie počíta z~viacerých
+snímok, čo náhodné výkyvy ďalej zmierňuje. Prah 0,40 preto považujeme za vhodný
+kompromis medzi bezpečnosťou a pohodlím.
 
-\section{Presnosť detekcie prezentačných útokov}
+\section{Presnosť pasívnej detekcie útokov}
 
-\textbf{Dataset.} Pomocou skriptu \texttt{evaluation.capture\_dataset} bol webkamerou
-nahraný vlastný dataset s~nasledujúcimi triedami:
+Na vyhodnotenie sme použili testovaciu časť verejnej databázy CASIA-FASD
+\cite{zhang2012casia}, konkrétne 2408 snímok vybraných z~jej videí. Databáza obsahuje
+živé tváre a tri druhy útokov (tab.~\ref{tab:pad-dataset}). Snímky v~použitej verzii
+databázy sú už orezané okolo tváre na $256\times256$~px, takže modely MiniFASNet nevidia
+celé okolie tváre, s~ktorým počítajú. Výsledky sú preto skôr pesimistickým odhadom.
 
 \begin{table}[H]
   \centering
-  \caption{Dataset pre vyhodnotenie PAD}
+  \caption{Dataset pre vyhodnotenie pasívnej detekcie (CASIA-FASD, testovacia časť)}
   \label{tab:pad-dataset}
   \begin{tabularx}{\textwidth}{@{}l X r@{}}
     \toprule
     Trieda & Popis & Snímky \\
     \midrule
-    \texttt{bona\_fide} & živé tváre autorov, rôzne vzdialenosti, svetlo a uhly & \todo{} \\
-    \texttt{attack/print} & fotografia vytlačená na papieri A4 & \todo{} \\
-    \texttt{attack/replay} & fotografia a video na displeji mobilného telefónu & \todo{} \\
-    \texttt{attack/screen} & fotografia na monitore notebooku & \todo{} \\
+    \texttt{bona\_fide} & živé tváre & 591 \\
+    \texttt{print\_warped} & vytlačená fotografia, ohýbaná pred kamerou & 712 \\
+    \texttt{print\_cut} & vytlačená fotografia s~vystrihnutými očami & 536 \\
+    \texttt{replay} & video prehrávané na displeji & 569 \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
-\textbf{Postup.} Príkaz \texttt{python -m evaluation.evaluate\_pad --dir data/pad}
-vypočíta skóre živosti každej snímky a z~nich metriky pri systémovom prahu 0,70.
+Pri pôvodnom prahu 0,70 boli útoky zachytené takmer úplne (APCER najviac 0,93~\%), no
+odmietnutých bolo 34~\% snímok živých tvárí. Taký prah by v~praxi viedol k~častému
+odmietaniu skutočných používateľov. Tabuľka
+\ref{tab:prah} ukazuje, ako sa chyby menia s~prahom.
 
 \begin{table}[H]
   \centering
-  \caption{Výsledky pasívnej detekcie útokov (prah 0,70)}
+  \caption{Chyby pasívnej detekcie pri rôznych prahoch (úroveň snímok)}
+  \label{tab:prah}
+  \begin{tabular}{@{}ccccc@{}}
+    \toprule
+    Prah & BPCER [\%] & APCER print\_warped & APCER print\_cut & APCER replay \\
+    \midrule
+    0,20 & 5,58 & 3,93 & 5,97 & 5,62 \\
+    0,30 & 8,63 & 2,67 & 2,99 & 2,64 \\
+    0,40 & 12,86 & 1,83 & 2,05 & 0,88 \\
+    0,50 & 18,10 & 0,70 & 1,68 & 0,53 \\
+    0,60 & 25,21 & 0,28 & 1,12 & 0,18 \\
+    0,70 & 34,35 & 0,00 & 0,93 & 0,00 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Prah sme znížili na 0,50. Na úrovni jednej snímky pri ňom APCER neprekročí 1,7~\%
+pri žiadnom type útoku. BPCER 18~\% sa týka jednotlivých snímok -- pri prihlásení sa
+skóre priemeruje cez približne sedem frontálnych snímok, takže náhodne nízke skóre
+jednej snímky reláciu nezamietne. Útoky, ktoré by pasívna detekcia prepustila, musia
+navyše prejsť aktívnou výzvou. Výsledky pri systémovom prahu sú v~tabuľke~\ref{tab:pad}.
+
+\begin{table}[H]
+  \centering
+  \caption{Výsledky pasívnej detekcie útokov na CASIA-FASD (prah 0,50)}
   \label{tab:pad}
   \begin{tabular}{@{}lc@{}}
     \toprule
     Metrika & Hodnota [\%] \\
     \midrule
-    APCER (print) & \todo{} \\
-    APCER (replay) & \todo{} \\
-    APCER (screen) & \todo{} \\
-    APCER (max) & \todo{} \\
-    BPCER & \todo{} \\
-    ACER & \todo{} \\
-    EER & \todo{} \\
-    BPCER20 & \todo{} \\
+    APCER (print\_warped) & 0,70 \\
+    APCER (print\_cut) & 1,68 \\
+    APCER (replay) & 0,53 \\
+    APCER (max) & 1,68 \\
+    BPCER & 18,10 \\
+    ACER & 9,89 \\
+    EER & 5,25 \\
+    BPCER20 (APCER = 5~\%) & 5,58 \\
+    BPCER100 (APCER = 1~\%) & 16,58 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -713,27 +904,57 @@ vypočíta skóre živosti každej snímky a z~nich metriky pri systémovom prah
     \optfigure{pad_det.pdf}{\linewidth}{DET pre každý typ útoku}
     \caption{DET (APCER vs. BPCER)}
   \end{subfigure}
-  \caption{Pasívna detekcia prezentačných útokov}
+  \caption{Pasívna detekcia prezentačných útokov na CASIA-FASD}
   \label{fig:pad}
 \end{figure}
 
-\todo{Interpretácia: ktorý typ útoku je najťažší, či je prah 0,70 vhodný, prečo samotná
-pasívna detekcia nestačí (generalizácia na nové podmienky \cite{sun2023rethinking}).}
+Z~histogramu je vidieť, že skóre takmer všetkých útokov je blízko nuly a útoky sa líšia
+len v~tom, ako často sa objaví výnimka. Najťažšie odhaliteľná je fotografia s~vystrihnutými
+očami, pri ktorej sú v~obraze skutočné oči útočníka. Živé tváre majú skóre rozložené
+širšie, čo súvisí s~nižšou kvalitou videí v~databáze a s~orezaním okolia tváre.
 
-Už pri overovaní implementácie sa ukázal dôležitý jav: digitálna fotografia odoslaná
-priamo serveru dostala od MiniFASNet skóre živosti 0,999 -- pasívny model ju neodlíšil
-od živej tváre, pretože na nej nie sú stopy tlače ani displeja. Takú reláciu však
-zamietla aktívna výzva (všetky kroky s~nulovým pohybom). Tento prípad ilustruje, prečo
-systém kombinuje pasívnu a aktívnu detekciu.
+\section{Testy celého systému}
 
-\section{End-to-end test systému}
+\subsection*{Útok statickým obrázkom}
+Útok statickým obrázkom sme vyskúšali dvoma spôsobmi. V~prvom sme do prehliadača
+podstrčili virtuálnu kameru, ktorej obraz tvorila umelo vygenerovaná fotografia tváre,
+a prešli sme bežným prihlásením cez webové rozhranie. Pasívna detekcia v~tomto prípade
+obraz nezamietla (skóre živosti 0,98) -- obrázok vložený priamo do video toku nemá
+žiadne stopy tlače ani displeja, ide teda v~skutočnosti o~injekčný útok. Zachytila ho
+až aktívna výzva, pretože tvár sa v~žiadnom kroku nepohla
+(obr.~\ref{fig:ui-rejected}). Počas tvorby snímok obrazovky sme takto vykonali 6 pokusov
+a všetky boli zamietnuté s~dôvodom \texttt{active\_challenge\_failed}.
 
-Test prebehol na verejnej inštancii aplikácie. Výsledky sa čerpajú z~auditného záznamu
-skriptom \texttt{python -m evaluation.audit\_report}.
+V~druhom teste sme ten istý obrázok poslali 30-krát priamo cez API (režim identifikácie),
+s~drobným posunom a šumom medzi snímkami a so stratovou kompresiou JPEG podobne ako pri
+skutočnej kamere. Všetkých 30 relácií bolo zamietnutých už pasívnou detekciou
+(\texttt{passive\_spoof}); priemerné skóre živosti relácie bolo 0,25 (od 0,04 do 0,52).
+Oba testy ukazujú, prečo systém používa obe vrstvy: každá zachytila prípad, ktorý by
+druhá prepustila.
 
 \begin{table}[H]
   \centering
-  \caption{Scenáre end-to-end testu}
+  \caption{Útok statickým obrázkom}
+  \label{tab:static}
+  \begin{tabularx}{\textwidth}{@{}X c c l@{}}
+    \toprule
+    Spôsob útoku & Pokusy & Zamietnuté & Vrstva, ktorá útok zachytila \\
+    \midrule
+    Virtuálna kamera v~prehliadači & 6 & 6 & aktívna výzva \\
+    Priame volanie API & 30 & 30 & pasívna detekcia \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection*{Test so živými používateľmi}
+Úspešnosť prihlásenia skutočných používateľov a odolnosť proti fyzickým útokom
+(vytlačená fotografia, displej mobilu, video s~pohybmi hlavy) sa dá zmerať iba
+s~reálnymi ľuďmi pred kamerou. Postup a scenáre sú v~tabuľke~\ref{tab:e2e}; výsledky sa
+čerpajú z~auditného záznamu skriptom \texttt{python -m evaluation.audit\_report}.
+
+\begin{table}[H]
+  \centering
+  \caption{Scenáre testu so živými používateľmi}
   \label{tab:e2e}
   \small
   \begin{tabularx}{\textwidth}{@{}X c l c@{}}
@@ -747,50 +968,41 @@ skriptom \texttt{python -m evaluation.audit\_report}.
     Fotografia na mobile/monitore & \todo{} & zamietnutie & \todo{} \\
     Video obete s~pohybmi hlavy & \todo{} & zamietnutie & \todo{} \\
     Zámena osoby počas snímania & \todo{} & \texttt{identity\_inconsistent} & \todo{} \\
-    Opakované odoslanie požiadavky & \todo{} & \texttt{invalid\_challenge} & \todo{} \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
-\begin{figure}[H]
-  \centering
-  \optfigure{rejection_reasons.pdf}{0.7\textwidth}{graf z evaluation.audit\_report}
-  \caption{Dôvody zamietnutia v~end-to-end teste}
-  \label{fig:reasons}
-\end{figure}
-
-\todo{Interpretácia: ktorá vrstva zachytila ktorý útok, koľko falošných zamietnutí
-živých používateľov a prečo (svetlo, nedostatočný pohyb), prípadná úprava prahov.}
-
 \section{Výkon}
 
-Latencia bola meraná skriptom \texttt{evaluation.benchmark} na notebooku (CPU, ONNX
-Runtime bez GPU) na obrázku $512\times512$~px, 30 opakovaní.
+Latenciu sme merali skriptom \texttt{evaluation.benchmark} na notebooku s~procesorom
+Intel Core i7-13650HX (ONNX Runtime na CPU, bez GPU), 200 opakovaní, na snímke
+v~rozlíšení $640\times360$~px, ktoré posiela klient.
 
 \begin{table}[H]
   \centering
-  \caption{Latencia spracovania jednej snímky}
+  \caption{Latencia spracovania jednej snímky ($640\times360$~px)}
   \label{tab:latencia}
   \begin{tabular}{@{}lrrr@{}}
     \toprule
     Fáza & Priemer [ms] & Medián [ms] & P95 [ms] \\
     \midrule
-    Detekcia (YuNet) & 4,97 & 4,82 & 5,28 \\
-    Kontrola kvality & 0,10 & 0,10 & 0,10 \\
+    Detekcia (YuNet) & 4,76 & 4,65 & 5,50 \\
+    Kontrola kvality & 0,10 & 0,10 & 0,11 \\
     Odhad polohy hlavy & 0,01 & 0,01 & 0,01 \\
-    Pasívna živosť (2$\times$ MiniFASNet) & 2,44 & 2,42 & 2,56 \\
-    Extrakcia príznakov (SFace) & 3,53 & 3,50 & 3,72 \\
+    Pasívna živosť (2$\times$ MiniFASNet) & 2,59 & 2,53 & 2,90 \\
+    Extrakcia príznakov (SFace) & 3,98 & 3,95 & 4,38 \\
     \midrule
-    Celá snímka & 13,26 & 12,63 & 16,10 \\
+    Celá snímka & 12,23 & 12,06 & 13,31 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Relácia obsahuje 15 snímok (3 kroky po 5 snímkach), jej spracovanie na serveri teda
-trvá približne 0,2~s. Celkovú dobu prihlásenia (približne 7~s) určuje najmä čas, ktorý
-používateľ potrebuje na vykonanie pohybov. Na bezplatnej inštancii služby Render je
-spracovanie pomalšie a prvá požiadavka po nečinnosti trvá až desiatky sekúnd, kým sa
-inštancia spustí.
+Relácia má najviac 27 snímok, jej spracovanie na serveri teda trvá približne 0,3~s.
+Pre porovnanie, pri snímke $1280\times720$~px trvá samotná detekcia 18~ms a celá snímka
+26~ms, preto klient snímky pred odoslaním zmenšuje. Celkovú dobu prihlásenia (približne
+5--7~s) určuje najmä čas, ktorý používateľ potrebuje na vykonanie pohybov. Na
+bezplatnej inštancii služby Render je spracovanie pomalšie a prvá požiadavka po
+nečinnosti trvá až desiatky sekúnd, kým sa inštancia spustí.
 
 \chapter{Príručka a dokumentácia}
 \label{ch:prirucka}
@@ -806,7 +1018,8 @@ zabezpečujú:
   \item uzamknuté verzie závislostí klienta (\texttt{package-lock.json}),
   \item Docker obrazy a súbor \texttt{docker-compose.yml} pre spustenie jedným príkazom,
   \item automatické testy spúšťané v~GitHub Actions pri každej zmene,
-  \item vyhodnocovacie skripty s~pevne nastaveným náhodným semienkom.
+  \item vyhodnocovacie skripty, ktoré sami stiahnu verejné dáta (LFW) alebo pracujú
+        s~priečinkom s~jasne danou štruktúrou (CASIA-FASD, vlastné nahrávky).
 \end{itemize}
 
 Podrobná technická dokumentácia je v~priečinku \texttt{docs/} repozitára:
@@ -844,6 +1057,14 @@ Pri produkčnom nasadení treba nastaviť \texttt{FA\_ENVIRONMENT=production},
 vygenerovať tajomstvá príkazom \texttt{python -m app.cli generate-secrets} a aplikáciu
 sprístupniť cez HTTPS -- prehliadač inak nepovolí prístup ku kamere.
 
+\subsection*{Vyhodnotenie}
+\begin{lstlisting}[language=bash]
+python -m evaluation.evaluate_recognition --lfw
+python -m evaluation.evaluate_pad --dir data/pad
+python -m evaluation.benchmark --image tvar.jpg --runs 200
+python -m evaluation.audit_report
+\end{lstlisting}
+
 \subsection*{Konfigurácia}
 Prahy a limity sa nastavujú premennými prostredia s~predponou \texttt{FA\_}
 (tab.~\ref{tab:konfiguracia}).
@@ -858,10 +1079,11 @@ Prahy a limity sa nastavujú premennými prostredia s~predponou \texttt{FA\_}
     Premenná & Predvolená & Význam \\
     \midrule
     \texttt{FA\_MATCHING\_\_THRESHOLD} & 0,40 & prah kosínusovej podobnosti \\
-    \texttt{FA\_PASSIVE\_LIVENESS\_\_THRESHOLD} & 0,70 & prah skóre živosti \\
+    \texttt{FA\_PASSIVE\_LIVENESS\_\_THRESHOLD} & 0,50 & prah skóre živosti \\
     \texttt{FA\_ACTIVE\_LIVENESS\_\_STEPS} & 2 & počet náhodných pohybov vo výzve \\
     \texttt{FA\_ACTIVE\_LIVENESS\_\_YAW\_THRESHOLD} & 0,20 & minimálne otočenie hlavy \\
     \texttt{FA\_ACTIVE\_LIVENESS\_\_PITCH\_THRESHOLD} & 0,07 & minimálny pohyb hore/dole \\
+    \texttt{FA\_CHALLENGE\_\_ACTION\_TIMEOUT\_MS} & 5000 & najdlhšie trvanie pohybového kroku \\
     \texttt{FA\_SECURITY\_\_LOCKOUT\_MAX\_FAILURES} & 5 & neúspechy do zablokovania \\
     \texttt{FA\_SECURITY\_\_EXPOSE\_SCORES} & true & vracanie skóre (v~produkcii false) \\
     \texttt{FA\_DATABASE\_URL} & SQLite & pripojenie k~databáze \\
@@ -874,22 +1096,22 @@ Prahy a limity sa nastavujú premennými prostredia s~predponou \texttt{FA\_}
 
 \subsection*{Registrácia}
 \begin{enumerate}
-  \item Na stránke \emph{Registrácia} zadajte používateľské meno (3--32 znakov: malé
-        písmená, číslice, bodka, pomlčka, podčiarkovník) a voliteľne celé meno.
-  \item Povoľte prístup ku kamere.
-  \item Umiestnite tvár do oválu. Kým sa ovál nezmení na zelený a nezobrazí sa
-        \enquote{Tvár je pripravená}, postupujte podľa nápovedy (priblížte sa, zlepšite
-        osvetlenie).
-  \item Kliknite na \emph{Zaregistrovať tvár} a vykonajte zobrazené pokyny:
-        pozrite priamo do kamery, potom pomaly otočte hlavu doľava alebo doprava,
-        prípadne zdvihnite alebo skloňte hlavu. Poradie je pri každom pokuse iné.
+  \item Na stránke \emph{Registrovať} zadajte používateľské meno (3--32 znakov: malé
+        písmená, číslice, bodka, pomlčka, podčiarkovník), voliteľne meno a kliknite na
+        \emph{Pokračovať}.
+  \item Povoľte prístup ku kamere a umiestnite tvár do kruhu. Keď sa prstenec okolo kruhu
+        zafarbí nazeleno a zobrazí sa \enquote{Tvár je v~poriadku}, kliknite na
+        \emph{Začať}.
+  \item Pozrite sa do kamery a potom urobte pohyby podľa pokynu pod kruhom (napríklad
+        \enquote{Otočte hlavu doľava}); smer ukazuje aj šípka v~kruhu. Krok sa ukončí
+        sám, keď systém pohyb rozpozná. Poradie pohybov je pri každom pokuse iné.
   \item Po úspešnom overení sa vytvorí účet a používateľ je prihlásený.
 \end{enumerate}
 
 \subsection*{Prihlásenie}
-Režim \emph{Meno + tvár (1:1)} vyžaduje zadanie mena, režim \emph{Iba tvár (1:N)}
-vyhľadá používateľa iba podľa tváre. Postup snímania je rovnaký ako pri registrácii.
-Po piatich neúspešných pokusoch počas 15 minút sa účet dočasne zablokuje.
+Štandardne sa zadáva meno (verifikácia 1:1). Odkaz \emph{Prihlásiť sa bez mena}
+prepne na identifikáciu 1:N iba podľa tváre. Postup snímania je rovnaký ako pri
+registrácii. Po piatich neúspešných pokusoch počas 15 minút sa účet dočasne zablokuje.
 
 \subsection*{Riešenie problémov}
 \begin{table}[H]
@@ -901,12 +1123,12 @@ Po piatich neúspešných pokusoch počas 15 minút sa účet dočasne zablokuje
     \toprule
     Hlásenie & Riešenie \\
     \midrule
-    Prístup ku kamere bol zamietnutý & povoľte kameru v~nastaveniach stránky \\
-    Kamera vyžaduje zabezpečené pripojenie & otvorte aplikáciu cez HTTPS alebo localhost \\
-    Príliš tma / Príliš svetla & otočte sa k~zdroju svetla, nesedte proti oknu \\
-    Pohyby hlavy nezodpovedali výzve & otáčajte hlavou výraznejšie a až po zobrazení pokynu \\
-    Bol zistený pokus o~podvrh & nepoužívajte fotografiu ani displej; pri falošnom poplachu zlepšite osvetlenie \\
-    Overenie zlyhalo -- tvár sa nezhoduje & zlepšite svetlo; pri zmene vzhľadu aktualizujte vzor v~účte \\
+    Kamera nie je dostupná & povoľte kameru v~nastaveniach stránky a kliknite na \emph{Povoliť kameru} \\
+    Nevidíme vašu tvár / Podíďte bližšie & tvár do kruhu, bližšie ku kamere \\
+    Je príliš tma / Je príliš svetla & otočte sa k~zdroju svetla, nesedte proti oknu \\
+    Nerozpoznali sme \ldots{} & urobte uvedený pohyb výraznejšie, až keď sa zobrazí pokyn \\
+    Vyzerá to na fotografiu alebo obrazovku & nepoužívajte fotografiu ani displej; pri falošnom poplachu zlepšite osvetlenie \\
+    Tvár sa nezhoduje s~účtom & zlepšite svetlo; pri zmene vzhľadu aktualizujte vzor v~účte \\
     Príliš veľa pokusov & počkajte 15 minút \\
     \bottomrule
   \end{tabularx}
@@ -915,7 +1137,7 @@ Po piatich neúspešných pokusoch počas 15 minút sa účet dočasne zablokuje
 \subsection*{Používateľský účet a administrácia}
 V~účte je história všetkých pokusov o~prihlásenie vrátane neúspešných, možnosť
 aktualizovať vzor tváre (nový vzor sa musí zhodovať s~pôvodným) a natrvalo vymazať
-účet aj vzor. Rolu administrátora prideľuje príkaz
+účet aj vzor (obr.~\ref{fig:ui-account}). Rolu administrátora prideľuje príkaz
 \texttt{python -m app.cli promote <meno>}. Administrátor vidí štatistiky úspešnosti,
 dôvody zamietnutí, zoznam používateľov (blokovanie, odstránenie) a celý auditný záznam.
 
@@ -931,7 +1153,7 @@ dôvody zamietnutí, zoznam používateľov (blokovanie, odstránenie) a celý a
     Metóda & Cesta & Popis \\
     \midrule
     POST & \texttt{/challenges} & vydanie jednorazovej výzvy \\
-    POST & \texttt{/biometrics/quality} & kontrola kvality jednej snímky \\
+    POST & \texttt{/biometrics/quality} & kvalita a poloha hlavy na jednej snímke \\
     POST & \texttt{/enrollment} & registrácia, vráti JWT \\
     POST & \texttt{/auth/verify} & overenie 1:1, vráti JWT \\
     POST & \texttt{/auth/identify} & identifikácia 1:N, vráti JWT \\
@@ -948,17 +1170,34 @@ dokumentácii \texttt{/docs} (dostupná mimo produkčného režimu).
 
 \chapter{Záver}
 
-\todo{Záver (cca 1 strana) napíšte vlastnými slovami. Odporúčaná osnova:}
-\begin{itemize}
-  \item čo bolo vytvorené (systém, vrstvy ochrany, nasadenie);
-  \item hlavné výsledky s~číslami z~kapitoly~\ref{ch:testovanie} (EER, ACER, úspešnosť
-        end-to-end testu, latencia);
-  \item obmedzenia: odhad polohy hlavy iba z~5 bodov, injekčné útoky cez virtuálnu
-        kameru, malý vlastný dataset, bezplatný hosting;
-  \item možné rozšírenia: modely PAD s~lepšou generalizáciou \cite{srivatsan2023flip},
-        detekcia injekčných útokov, ochrana šablón zrušiteľnou biometriou
-        \cite{abdullahi2024template}, mobilná aplikácia.
-\end{itemize}
+V~projekte sme navrhli, implementovali a nasadili webový systém na prihlasovanie tvárou
+s~viacvrstvovou ochranou proti prezentačným útokom. Systém tvár sníma bežnou webkamerou,
+všetky rozhodnutia robí na serveri a kombinuje kontrolu kvality snímky, pasívnu detekciu
+podvrhu modelmi MiniFASNet, náhodnú výzvu na pohyb hlavy a kontrolu konzistencie
+identity počas snímania. Tvár porovnáva modelom SFace a uložené vzory šifruje.
+
+Meranie ukázalo, že rozpoznávanie dosahuje na databáze LFW EER 2,47~\% a pri použitom
+prahu 0,40 nevzniklo ani jedno falošné prijatie. Pasívna detekcia mala na databáze
+CASIA-FASD EER 5,25~\%. Meranie zároveň odhalilo, že pôvodný prah 0,70 zamietal príliš
+veľa živých tvárí, preto sme ho znížili na 0,50, pri ktorom APCER neprekročí 1,7~\%.
+Pri teste statickým obrázkom sa ukázalo, že vrstvy sa dopĺňajú: obraz vložený cez
+virtuálnu kameru prešiel pasívnou detekciou, ale zastavila ho aktívna výzva, a naopak
+snímky poslané priamo cez API zachytila pasívna detekcia. Spracovanie relácie trvá na
+bežnom procesore približne 0,3~s.
+
+Počas testovania sme na základe nameraných výsledkov upravili aj samotný systém:
+výzva sa namiesto pevného času prispôsobuje pohybu používateľa, poloha hlavy sa počíta
+aj z~rozmazaných snímok, pasívna detekcia sa vyhodnocuje len na frontálnych snímkach
+a opravili sme chybu pri spúšťaní kamery.
+
+Systém má aj obmedzenia. Poloha hlavy sa odhaduje len z~piatich bodov, takže je menej
+presná ako odhad z~hustej siete bodov. Proti injekčným útokom cez virtuálnu kameru
+chráni iba aktívna výzva -- dostatočne sofistikovaný útok, ktorý by v~reálnom čase
+generoval pohyby tváre, by vyžadoval ďalšie opatrenia, napríklad atestáciu zariadenia.
+Pasívnu detekciu sme vyhodnotili na staršej databáze s~orezanými snímkami a test so
+živými používateľmi v~širšom rozsahu zostáva na doplnenie. Ako rozšírenie sa ponúka
+použitie modelov detekcie s~lepšou generalizáciou \cite{srivatsan2023flip}, detekcia
+injekčných útokov a ochrana vzorov zrušiteľnou biometriou \cite{abdullahi2024template}.
 
 \begin{thebibliography}{99}
 \addcontentsline{toc}{chapter}{Zoznam použitej literatúry}
@@ -995,12 +1234,6 @@ SFace: Sigmoid-Constrained Hypersphere Loss for Robust Face Recognition.
 \textit{IEEE Transactions on Image Processing}. 2021, roč.~30, s.~2587--2598.
 DOI: 10.1109/TIP.2020.3048632
 
-\bibitem{iso29794-5}
-ISO/IEC 29794-5:2025.
-\textit{Information technology -- Biometric sample quality -- Part~5: Face image data}.
-1.~vyd. Ženeva: ISO, 2025.
-Dostupné z: \url{https://www.iso.org/standard/81005.html}
-
 \bibitem{schlett2022fiqa}
 SCHLETT, Torsten, RATHGEB, Christian, HENNIGER, Olaf, GALBALLY, Javier,
 FIERREZ, Julian a BUSCH, Christoph.
@@ -1008,12 +1241,11 @@ Face Image Quality Assessment: A Literature Survey.
 \textit{ACM Computing Surveys}. 2022, roč.~54, č.~10s, s.~1--49.
 DOI: 10.1145/3507901
 
-\bibitem{yu2023fassurvey}
-YU, Zitong, QIN, Yunxiao, LI, Xiaobai, ZHAO, Chenxu, LEI, Zhen a ZHAO, Guoying.
-Deep Learning for Face Anti-Spoofing: A Survey.
-\textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}. 2023,
-roč.~45, č.~5, s.~5609--5631.
-DOI: 10.1109/TPAMI.2022.3215850
+\bibitem{iso29794-5}
+ISO/IEC 29794-5:2025.
+\textit{Information technology -- Biometric sample quality -- Part~5: Face image data}.
+1.~vyd. Ženeva: ISO, 2025.
+Dostupné z: \url{https://www.iso.org/standard/81005.html}
 
 \bibitem{hernandezortega2023pad}
 HERNANDEZ-ORTEGA, Javier, FIERREZ, Julian, MORALES, Aythami a GALBALLY, Javier.
@@ -1022,6 +1254,13 @@ In: MARCEL, Sébastien, FIERREZ, Julian a EVANS, Nicholas (ed.).
 \textit{Handbook of Biometric Anti-Spoofing: Presentation Attack Detection and
 Vulnerability Assessment}. 3.~vyd. Singapore: Springer, 2023, s.~203--230.
 DOI: 10.1007/978-981-19-5288-3\_9
+
+\bibitem{yu2023fassurvey}
+YU, Zitong, QIN, Yunxiao, LI, Xiaobai, ZHAO, Chenxu, LEI, Zhen a ZHAO, Guoying.
+Deep Learning for Face Anti-Spoofing: A Survey.
+\textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}. 2023,
+roč.~45, č.~5, s.~5609--5631.
+DOI: 10.1109/TPAMI.2022.3215850
 
 \bibitem{sun2023rethinking}
 SUN, Yiyou, LIU, Yaojie, LIU, Xiaoming, LI, Yixuan a CHU, Wen-Sheng.
@@ -1079,9 +1318,23 @@ Dostupné z: \url{https://github.com/opencv/opencv_zoo}
 MINIVISION AI. \textit{Silent-Face-Anti-Spoofing} [softvér]. 2020.
 Dostupné z: \url{https://github.com/minivision-ai/Silent-Face-Anti-Spoofing}
 
+\bibitem{huang2007lfw}
+HUANG, Gary B., RAMESH, Manu, BERG, Tamara a LEARNED-MILLER, Erik.
+\textit{Labeled Faces in the Wild: A Database for Studying Face Recognition in
+Unconstrained Environments}. Technical Report 07-49. Amherst: University of
+Massachusetts, 2007.
+
+\bibitem{zhang2012casia}
+ZHANG, Zhiwei, YAN, Junjie, LIU, Sifei, LEI, Zhen, YI, Dong a LI, Stan Z.
+A Face Antispoofing Database with Diverse Attacks.
+In: \textit{2012 5th IAPR International Conference on Biometrics (ICB)}.
+IEEE, 2012, s.~26--31.
+DOI: 10.1109/ICB.2012.6199754
+
 \end{thebibliography}
 
 \appendix
+
 \chapter{Obsah repozitára}
 \label{app:repo}
 
@@ -1098,7 +1351,7 @@ Repozitár \url{https://github.com/opoiasnik/face-auth-antispoofing}:
 \chapter{Ukážka odpovede API}
 \label{app:api}
 
-\begin{lstlisting}[caption={Zamietnutie relácie pri útoku statickou fotografiou}]
+\begin{lstlisting}[caption={Zamietnutie relácie pri útoku statickým obrázkom}]
 HTTP/1.1 401 Unauthorized
 {
   "error": {
@@ -1106,17 +1359,18 @@ HTTP/1.1 401 Unauthorized
     "message": "Liveness challenge was not completed",
     "details": {
       "reason": "active_challenge_failed",
-      "passive_liveness": 0.9991,
+      "passive_liveness": 0.9592,
       "active_liveness": {
         "passed": false,
         "steps": [
-          {"action": "center",     "passed": false, "usable_frames": 5, "peak_delta": 0.2488},
-          {"action": "turn_left",  "passed": false, "usable_frames": 5, "peak_delta": 0.0},
-          {"action": "turn_right", "passed": false, "usable_frames": 5, "peak_delta": 0.0}
+          {"action": "center",    "passed": true,  "usable_frames": 7,  "peak_delta": 0.1045},
+          {"action": "look_up",   "passed": false, "usable_frames": 10, "peak_delta": 0.0},
+          {"action": "look_down", "passed": false, "usable_frames": 10, "peak_delta": 0.0}
         ]
       },
       "consistency": 1.0,
-      "quality_issues": {}
+      "quality_issues": {},
+      "failed_action": "look_up"
     }
   }
 }
