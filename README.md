@@ -4,6 +4,12 @@ Webová aplikácia na prihlásenie pomocou tváre (bez hesla) s viacvrstvovou de
 prezentačných útokov (*Presentation Attack Detection*, ISO/IEC 30107). Semestrálny projekt
 z predmetu **Biometrické systémy bezpečnosti** (TUKE FEI).
 
+**Autori:** Oleh Poiasnik a Andrii Pervashov.
+
+Správa: [report/main.tex](report/main.tex), [PDF](report/Biometricka_autentifikacia_tvare.pdf).
+Prezentácia na obhajobu: [FaceAuth_prezentacia_FEI.pptx](presentation/FaceAuth_prezentacia_FEI.pptx).
+Protokol reálnych meraní: [docs/manual-test-protocol.md](docs/manual-test-protocol.md).
+
 | Vrstva | Technológia | Chráni proti |
 |---|---|---|
 | Kontrola kvality vzorky | YuNet detektor + Laplacián, jas, veľkosť | nekvalitným vzorkám, viacerým tváram |
@@ -158,3 +164,16 @@ docs/               dokumentácia
 | SFace (face_recognition_sface_2021dec) | OpenCV Zoo | Apache-2.0 |
 | MiniFASNetV2, MiniFASNetV1SE | Minivision Silent-Face-Anti-Spoofing, ONNX export yakhyo/face-anti-spoofing | Apache-2.0 |
 
+
+## Správa a obhajoba
+
+LaTeX zdroj je v `report/main.tex`, obrázky v `report/figures/` a archivované
+číselné výsledky experimentov v `report/results/`. Report sa zostavuje z priečinka
+`report/` dvoma spusteniami:
+
+```bash
+pdflatex -interaction=nonstopmode -halt-on-error -jobname=Biometricka_autentifikacia_tvare main.tex
+pdflatex -interaction=nonstopmode -halt-on-error -jobname=Biometricka_autentifikacia_tvare main.tex
+```
+
+Prezentácia na obhajobu je uložená v priečinku `presentation/`.

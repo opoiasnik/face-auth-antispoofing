@@ -1,0 +1,27 @@
+{
+  "dataset": "LFW (10 folds, 6000 pairs)",
+  "model": "sface-2021dec",
+  "samples_attempted": 12000,
+  "failure_to_acquire": 0.0,
+  "genuine_comparisons": 3000,
+  "impostor_comparisons": 3000,
+  "eer": 0.024666666666666667,
+  "eer_threshold": 0.2659003436565399,
+  "system_threshold": 0.4,
+  "far_at_system_threshold": 0.0,
+  "frr_at_system_threshold": 0.039,
+  "operating_points": [
+    {
+      "name": "FAR ≤ 0.01",
+      "threshold": 0.293505072593689,
+      "far": 0.01,
+      "frr": 0.026333333333333334
+    },
+    {
+      "name": "FAR ≤ 0.001",
+      "threshold": 0.3385066688060761,
+      "far": 0.001,
+      "frr": 0.030333333333333334
+    }
+  ]
+}

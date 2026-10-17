@@ -1,0 +1,43 @@
+{
+  "image": "C:\\Users\\Oleh\\AppData\\Local\\Temp\\fasprobe\\bench_640.jpg",
+  "resolution": [
+    360,
+    640
+  ],
+  "runs": 200,
+  "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+  "python": "3.13.7",
+  "stages": {
+    "Detekcia (YuNet)": {
+      "mean_ms": 4.760407999988274,
+      "p50_ms": 4.650050000236661,
+      "p95_ms": 5.503064999857084
+    },
+    "Kvalita vzorky": {
+      "mean_ms": 0.09888000001865294,
+      "p50_ms": 0.09750000026542693,
+      "p95_ms": 0.1056150000749767
+    },
+    "Odhad pózy hlavy": {
+      "mean_ms": 0.010600500017972081,
+      "p50_ms": 0.010000000656873453,
+      "p95_ms": 0.011645000131466061
+    },
+    "Pasívna živosť (2× MiniFASNet)": {
+      "mean_ms": 2.5883545000397135,
+      "p50_ms": 2.534600000217324,
+      "p95_ms": 2.8989450004701207
+    },
+    "Extrakcia príznakov (SFace)": {
+      "mean_ms": 3.976695499973175,
+      "p50_ms": 3.945899999962421,
+      "p95_ms": 4.379310000422265
+    },
+    "Celý snímok": {
+      "mean_ms": 12.23338250006691,
+      "p50_ms": 12.055449999934353,
+      "p95_ms": 13.306844999624445
+    }
+  },
+  "estimated_session_processing_ms": 330.30132750180655
+}

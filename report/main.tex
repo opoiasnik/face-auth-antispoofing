@@ -30,7 +30,6 @@
 \graphicspath{{figures/}}
 \setlength{\emergencystretch}{3em}
 
-\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO:} #1\textbf{]}}}
 \newcommand{\optfigure}[3]{%
   \IfFileExists{figures/#1}{\includegraphics[width=#2]{#1}}{%
     \fbox{\parbox{#2}{\centering\vspace{2cm}\textcolor{red}{Chýba \texttt{figures/#1}}\\[2pt]\small #3\vspace{2cm}}}}}
@@ -62,7 +61,7 @@
   \vfill
   \begin{flushleft}
     \begin{tabular}{@{}ll}
-      Vypracovali: & Oleh Poiasnik, \todo{meno spolužiaka}\\
+      Vypracovali: & Oleh Poiasnik, Andrii Pervashov\\
       Vyučujúci:   & doc.~Ing.~Matúš Pleva, PhD., Ing.~Eva Kupcová, PhD.\\
       Akademický rok: & 2026/2027\\
     \end{tabular}
@@ -219,20 +218,6 @@ skutočných používateľov, ktorých systém nesprávne označil za podvrh. V~
 zlyháva v~bezpečnosti alebo v~pohodlí \cite{busch2023standards}. Vhodnejšie je uvádzať,
 koľko živých používateľov systém odmietne pri pevne zvolenom podiele prijatých útokov,
 napríklad 5~\%.
-
-\section{Ochrana biometrických údajov}
-
-Biometrické údaje, ktoré slúžia na jednoznačnú identifikáciu osoby, patria podľa
-nariadenia Európskej únie o~ochrane osobných údajov medzi osobitné kategórie osobných
-údajov a ich spracovanie vyžaduje výslovný súhlas. Na rozdiel od hesla sa tvár po úniku
-nedá zmeniť, preto treba chrániť aj uložené vzory. Od ochrany sa očakáva, že z~uloženého
-vzoru nepôjde zrekonštruovať pôvodnú tvár, že vzory z~rôznych systémov sa nebudú dať
-prepojiť a že kompromitovaný vzor pôjde nahradiť novým. Používajú sa na to napríklad
-zrušiteľné biometrické vzory, biometrické šifrovacie schémy alebo šifrovanie, v~ktorom
-možno počítať priamo so zašifrovanými dátami \cite{abdullahi2024template}. Od roku 2024
-platí v~Európskej únii aj akt o~umelej inteligencii, ktorý systémy biometrickej
-identifikácie na diaľku zaraďuje medzi vysokorizikové. Výnimkou je biometrické overenie,
-ktorého jediným účelom je potvrdiť, že osoba je tá, za ktorú sa vydáva \cite{euaiact2024}.
 
 \chapter{Návrh riešenia}
 \label{ch:navrh}
@@ -426,6 +411,21 @@ po úniku zmeniť ako heslo \cite{abdullahi2024template}. Systém preto neuklad�
 fotografie, vzor šifruje a umožňuje používateľovi kedykoľvek vymazať účet aj vzor.
 Každý pokus o~prihlásenie do účtu -- aj zamietnutý pre podvrh -- sa zobrazí v~histórii
 jeho vlastníka, takže používateľ vidí, ak sa niekto pokúšal prihlásiť namiesto neho.
+
+\section{Ochrana biometrických údajov}
+
+Biometrické údaje, ktoré slúžia na jednoznačnú identifikáciu osoby, patria podľa
+nariadenia Európskej únie o~ochrane osobných údajov medzi osobitné kategórie osobných
+údajov a ich spracovanie vyžaduje výslovný súhlas. Na rozdiel od hesla sa tvár po úniku
+nedá zmeniť, preto treba chrániť aj uložené vzory. Od ochrany sa očakáva, že z~uloženého
+vzoru nepôjde zrekonštruovať pôvodnú tvár, že vzory z~rôznych systémov sa nebudú dať
+prepojiť a že kompromitovaný vzor pôjde nahradiť novým. Používajú sa na to napríklad
+zrušiteľné biometrické vzory, biometrické šifrovacie schémy alebo šifrovanie, v~ktorom
+možno počítať priamo so zašifrovanými dátami \cite{abdullahi2024template}. Od roku 2024
+platí v~Európskej únii aj akt o~umelej inteligencii, ktorý systémy biometrickej
+identifikácie na diaľku zaraďuje medzi vysokorizikové. Výnimkou je biometrické overenie,
+ktorého jediným účelom je potvrdiť, že osoba je tá, za ktorú sa vydáva \cite{euaiact2024}.
+
 
 \chapter{Implementácia}
 \label{ch:implementacia}
@@ -688,7 +688,7 @@ resp. 1~\% útokov.
 
 \section{Automatické testy}
 
-Serverová časť má 49 automatických testov, ktoré prejdú 87~\% jej kódu. Testy nahrádzajú
+Serverová časť má 51 automatických testov, ktoré prejdú 87~\% jej kódu. Testy nahrádzajú
 neurónové siete jednoduchými náhradami: umelá snímka nesie v~jednom bode informáciu
 o~tom, komu patrí, ako je otočená hlava a či je živá. Vďaka tomu sa celý postup overuje
 cez skutočné rozhranie servera bez modelov a bez grafickej karty. Klient má 11 testov.
@@ -896,10 +896,13 @@ systém používa obe vrstvy: každá zachytila prípad, ktorý by druhá prepus
 \end{table}
 
 \subsection*{Test so živými používateľmi}
-Úspešnosť prihlásenia skutočných používateľov a odolnosť proti fyzickým podvrhom
-(vytlačená fotografia, displej mobilu, video s~pohybmi hlavy) sa dá zmerať iba
-s~reálnymi ľuďmi pred kamerou. Scenáre sú v~tabuľke~\ref{tab:e2e}; výsledky sa čerpajú
-zo záznamov pokusov, ktoré systém ukladá.
+Overenie celého systému zahŕňa prihlásenie registrovanej osoby, pokus o~prihlásenie
+inej osoby a prezentačné útoky pomocou fotografie alebo videa. Tabuľka~\ref{tab:e2e}
+uvádza navrhnuté scenáre a očakávané rozhodnutia systému. Výsledky týchto meraní
+nie sú súčasťou experimentálneho vyhodnotenia, preto z~nich zatiaľ nemožno určiť
+úspešnosť prihlasovania ani odolnosť proti jednotlivým fyzickým útokom.
+Postup merania a spôsob zaznamenávania pokusov sú opísané
+v~\texttt{docs/manual-test-protocol.md}.
 
 \begin{table}[H]
   \centering
@@ -908,15 +911,15 @@ zo záznamov pokusov, ktoré systém ukladá.
   \small
   \begin{tabularx}{\textwidth}{@{}X c l c@{}}
     \toprule
-    Scenár & Pokusy & Očakávaný výsledok & Úspešnosť [\%] \\
+    Scenár & Pokusy & Očakávané & Výsledok \\
     \midrule
-    Registrovaný používateľ, s~menom & \todo{} & prijatie & \todo{} \\
-    Registrovaný používateľ, bez mena & \todo{} & prijatie & \todo{} \\
-    Iná osoba s~menom obete & \todo{} & nezhoda & \todo{} \\
-    Vytlačená fotografia obete & \todo{} & zamietnutie & \todo{} \\
-    Fotografia na mobile alebo monitore & \todo{} & zamietnutie & \todo{} \\
-    Video obete s~pohybmi hlavy & \todo{} & zamietnutie & \todo{} \\
-    Zámena osoby počas snímania & \todo{} & zmena osoby & \todo{} \\
+    Používateľ s~menom & nezmerané & prijatie & nezmerané \\
+    Používateľ bez mena & nezmerané & prijatie & nezmerané \\
+    Iná osoba s~menom obete & nezmerané & nezhoda & nezmerané \\
+    Vytlačená fotografia obete & nezmerané & zamietnutie & nezmerané \\
+    Fotografia na displeji & nezmerané & zamietnutie & nezmerané \\
+    Video obete s~pohybmi hlavy & nezmerané & zamietnutie & nezmerané \\
+    Zámena osoby počas snímania & nezmerané & zmena osoby & nezmerané \\
     \bottomrule
   \end{tabularx}
 \end{table}
@@ -952,6 +955,38 @@ približne 0,3~s. Pre porovnanie, pri snímke $1280\times720$ bodov trvá samotn
 prihlásenia (približne 5--7~s) určuje najmä čas, ktorý používateľ potrebuje na vykonanie
 pohybov. Na bezplatnej inštancii služby Render je spracovanie výrazne pomalšie a prvá
 požiadavka po dlhšej nečinnosti trvá až desiatky sekúnd, kým sa server spustí.
+
+
+\section{Obmedzenia experimentálneho vyhodnotenia}
+
+Výsledky rozpoznávania tváre, pasívnej detekcie podvrhov a merania latencie
+sú uložené v~priečinku \texttt{report/results/}. Súbory \texttt{summary.json}
+obsahujú súhrnné ukazovatele a súbory \texttt{scores.csv} jednotlivé skóre.
+Tieto výstupy umožňujú overiť výpočet metrík bez uchovávania snímok tvárí
+alebo biometrických vzorov.
+
+Vyhodnotenie rozpoznávania vychádza zo súhrnnej množiny 6000 dvojíc databázy
+LFW. Použitý skript nevykonáva samostatnú kalibráciu prahu v~jednotlivých
+foldoch. Pracovné body odvodené z~tejto množiny preto charakterizujú dostupnú
+vzorku a nepredstavujú nezávislé overenie kalibrácie. Nulový počet falošných
+zhôd v~3000 porovnaniach rôznych osôb zároveň nezaručuje nulovú chybovosť
+v~prevádzke.
+
+Pri vyhodnotení na databáze CASIA-FASD pochádza viac snímok z~rovnakých videí.
+Výsledky jednotlivých snímok preto nemožno interpretovať ako výsledky
+nezávislých autentifikačných relácií. Prah 0,50 bol posudzovaný na rovnakej
+vzorke, čo obmedzuje závery o~jeho správaní pri nových osobách, kamerách
+a svetelných podmienkach. Hodnoty BPCER20 a BPCER100 boli vypočítané zo
+spojených skóre všetkých útokov, kým APCER pri systémovom prahu vyjadruje
+maximum cez jednotlivé druhy útokov.
+
+Čas spracovania relácie približne 0,3~s je odhad odvodený z~priemernej
+latencie jednej snímky a počtu najviac 27 snímok. Nezahŕňa prenos údajov,
+databázové operácie ani čas potrebný na vykonanie pohybov. Automatické testy
+overujú logiku aplikácie pomocou náhrad biometrických modelov. Testy so
+statickým obrázkom zase hodnotia konkrétny syntetický vstup. Ani jedna
+z~týchto metód nenahrádza meranie úspešnosti celého systému s~reálnymi
+používateľmi a fyzickými podvrhmi.
 
 \chapter{Príručka a dokumentácia}
 \label{ch:prirucka}
@@ -1303,3 +1338,4 @@ Repozitár \url{https://github.com/opoiasnik/face-auth-antispoofing}:
 \end{itemize}
 
 \end{document}
+

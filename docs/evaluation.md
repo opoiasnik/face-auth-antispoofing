@@ -108,7 +108,7 @@ zamietnutia, skóre zhody a živosti, čas spracovania). Odporúčaný scenár:
 | Opakované odoslanie zachytenej požiadavky | 5 | `invalid_challenge` |
 
 ```bash
-python -m evaluation.audit_report --since 2026-11-01
+python -m evaluation.audit_report
 ```
 
 vytvorí tabuľku úspešnosti podľa režimu, priemerný a P95 čas a graf dôvodov zamietnutia.

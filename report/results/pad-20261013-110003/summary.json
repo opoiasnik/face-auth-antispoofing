@@ -1,0 +1,32 @@
+{
+  "dataset": "C:\\Users\\Oleh\\AppData\\Local\\Temp\\fasprobe\\pad_casia",
+  "samples_attempted": 2408,
+  "failure_to_acquire": 0.0,
+  "bona_fide_samples": 591,
+  "attack_samples": {
+    "print_cut": 536,
+    "print_warped": 712,
+    "replay": 569
+  },
+  "system_threshold": {
+    "threshold": 0.5,
+    "apcer": 0.016791044776119403,
+    "apcer_per_type": {
+      "print_cut": 0.016791044776119403,
+      "print_warped": 0.007022471910112359,
+      "replay": 0.005272407732864675
+    },
+    "bpcer": 0.18104906937394247,
+    "acer": 0.09892005707503093
+  },
+  "eer": 0.05245346869712352,
+  "eer_threshold": 0.19487143817123118,
+  "bpcer20": {
+    "bpcer": 0.05583756345177665,
+    "threshold": 0.20089866872876885
+  },
+  "bpcer100": {
+    "bpcer": 0.1658206429780034,
+    "threshold": 0.48510569334030157
+  }
+}

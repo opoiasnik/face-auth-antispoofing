@@ -15,6 +15,7 @@ class ModelFile:
     name: str
     url: str
     min_bytes: int
+    sha256: str
 
 
 MODELS = (
@@ -23,22 +24,26 @@ MODELS = (
         "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/"
         "face_detection_yunet_2023mar.onnx",
         200_000,
+        "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
     ),
     ModelFile(
         "face_recognition_sface_2021dec.onnx",
         "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/"
         "face_recognition_sface_2021dec.onnx",
         30_000_000,
+        "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
     ),
     ModelFile(
         "MiniFASNetV2.onnx",
         "https://github.com/yakhyo/face-anti-spoofing/releases/download/weights/MiniFASNetV2.onnx",
         1_000_000,
+        "b32929adc2d9c34b9486f8c4c7bc97c1b69bc0ea9befefc380e4faae4e463907",
     ),
     ModelFile(
         "MiniFASNetV1SE.onnx",
         "https://github.com/yakhyo/face-anti-spoofing/releases/download/weights/MiniFASNetV1SE.onnx",
         1_000_000,
+        "ebab7f90c7833fbccd46d3a555410e78d969db5438e169b6524be444862b3676",
     ),
 )
 
@@ -54,7 +59,9 @@ def _sha256(path: Path) -> str:
 def download(model: ModelFile, dest: Path, force: bool) -> Path:
     target = dest / model.name
     if target.exists() and target.stat().st_size >= model.min_bytes and not force:
-        print(f"[skip] {model.name} already present")
+        if _sha256(target) != model.sha256:
+            raise RuntimeError(f"{model.name}: SHA-256 mismatch; use --force to re-download")
+        print(f"[skip] {model.name} already present (SHA-256 verified)")
         return target
     tmp = target.with_suffix(".part")
     print(f"[get ] {model.name}")
@@ -66,6 +73,9 @@ def download(model: ModelFile, dest: Path, force: bool) -> Path:
     if size < model.min_bytes:
         tmp.unlink()
         raise RuntimeError(f"{model.name}: downloaded file too small ({size} B) - Git LFS pointer?")
+    if _sha256(tmp) != model.sha256:
+        tmp.unlink()
+        raise RuntimeError(f"{model.name}: SHA-256 mismatch in downloaded model")
     tmp.replace(target)
     return target
 
